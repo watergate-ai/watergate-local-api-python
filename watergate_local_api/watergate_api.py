@@ -5,7 +5,7 @@ import aiohttp
 import asyncio
 
 from .models import (
-    DeviceState, 
+    DeviceState,
     NetworkingData,
     TelemetryData,
     AutoShutOffState,
@@ -18,6 +18,7 @@ ACCEPT_HEADER = "Accept"
 CONTENT_TYPE_HEADER = "Content-Type"
 
 NETWORKING_URL = "/networking"
+VALVE_URL = "/valve"
 TELEMETRY_URL = "/telemetry"
 AUTO_SHUT_OFF_URL = "/auto-shut-off"
 AUTO_SHUT_OFF_REPORT_URL = "/auto-shut-off/report"
@@ -54,10 +55,22 @@ class WatergateLocalApiClient:
             await asyncio.sleep(1)  # Wait before retrying
         raise WatergateApiException(f"Failed to fetch data from {url} after 3 attempts")
 
+    async def _put(self, url: str, headers: dict, data: dict) -> bool:
+        for attempt in RETRY_ATTEMPTS:  # Retry logic
+            try:
+                async with self._session.put(url, json=data, headers=headers) as response:
+                    if response.status == 204:
+                        return True
+                _LOGGER.error("Failed to put data %s: %s", url, response.status)
+            except aiohttp.ClientError as e:
+                _LOGGER.error("Network error occurred: %s", e)
+            await asyncio.sleep(1)  # Wait before retrying
+        raise WatergateApiException(f"Failed to put data to {url} after 3 attempts")
+
     async def async_get_device_state(self) -> Optional[DeviceState]:
         """GET /api/sonic/ - Get device state."""
         headers = {ACCEPT_HEADER: "application/vnd.wtg.local.device-state.v1+json"}
-        data = await self._get(self._base_url, headers)
+        data = await self._get(self._base_url + "/", headers)
         return DeviceState.from_dict(data) if data else None
 
     async def async_get_networking(self) -> Optional[NetworkingData]:
@@ -73,6 +86,13 @@ class WatergateLocalApiClient:
         headers = {ACCEPT_HEADER: "application/vnd.wtg.local.telemetry.v1+json"}
         data = await self._get(url, headers)
         return TelemetryData.from_dict(data) if data else None
+
+    async def async_get_auto_shut_off(self) -> Optional[AutoShutOffState]:
+        """GET /api/sonic/auto-shut-off - Get Auto shut off state."""
+        url = self._base_url + AUTO_SHUT_OFF_URL
+        headers = {ACCEPT_HEADER: "application/vnd.wtg.local.auto-shut-off.v1+json"}
+        data = await self._get(url, headers)
+        return AutoShutOffState.from_dict(data) if data else None
 
     async def async_patch_auto_shut_off(
         self, enabled: Optional[bool] = None, duration: Optional[int] = None, volume: Optional[int] = None
@@ -114,14 +134,11 @@ class WatergateLocalApiClient:
         url = self._base_url + WEBHOOK_URL
         headers = {CONTENT_TYPE_HEADER: "application/vnd.wtg.local.webhook.v1+json"}
         data = {"webhookUrl": webhook}
+        return await self._put(url, headers, data)
 
-        for attempt in RETRY_ATTEMPTS:  # Retry logic
-            try:
-                async with self._session.patch(url, json=data, headers=headers) as response:
-                    if response.status == 204:
-                        return True
-                    _LOGGER.error("Failed to set webhook URL: %s", response.status)
-            except aiohttp.ClientError as e:
-                _LOGGER.error("Network error occurred: %s", e)
-            await asyncio.sleep(1)  # Wait before retrying
-        raise WatergateApiException(f"Failed to set webhook URL after 3 attempts")
+    async def async_set_valve_state(self, state: str) -> bool:
+        """PUT /api/sonic/webhook - Set webhook URL."""
+        url = self._base_url + VALVE_URL
+        headers = {CONTENT_TYPE_HEADER: "application/vnd.wtg.local.valve-change.v1+json"}
+        data = {"state": state}
+        return await self._put(url, headers, data)

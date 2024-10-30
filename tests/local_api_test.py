@@ -13,7 +13,7 @@ async def client():
 @pytest.mark.asyncio
 async def test_get_device_state(client):
     with aioresponses() as mock:
-        mock.get("http://testserver/api/sonic", payload={
+        mock.get("http://testserver/api/sonic/", payload={
             "valveState": "closed",
             "waterFlowing": False,
             "mqttConnected": True,
@@ -84,6 +84,18 @@ async def test_patch_auto_shut_off(client):
         assert result is True
 
 @pytest.mark.asyncio
+async def test_get_auto_shut_off(client):
+    with aioresponses() as mock:
+        mock.get("http://testserver/api/sonic/auto-shut-off", payload={
+            "volumeThreshold": 300,
+            "durationThreshold": 60,
+        })
+
+        report = await client.async_get_auto_shut_off()
+        assert report.volume_threshold == 300
+        assert report.duration_threshold == 60
+
+@pytest.mark.asyncio
 async def test_get_auto_shut_off_report(client):
     with aioresponses() as mock:
         mock.get("http://testserver/api/sonic/auto-shut-off/report", payload={
@@ -102,9 +114,17 @@ async def test_get_auto_shut_off_report(client):
 @pytest.mark.asyncio
 async def test_set_webhook_url(client):
     with aioresponses() as mock:
-        mock.patch("http://testserver/api/sonic/webhook", status=204)
+        mock.put("http://testserver/api/sonic/webhook", status=204)
 
         result = await client.async_set_webhook_url("http://webhook.url")
+        assert result is True
+
+@pytest.mark.asyncio
+async def test_set_valve(client):
+    with aioresponses() as mock:
+        mock.put("http://testserver/api/sonic/valve", status=204)
+
+        result = await client.async_set_valve_state("open")
         assert result is True
 
 @pytest.mark.asyncio
