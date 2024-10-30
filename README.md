@@ -23,7 +23,7 @@ The Watergate Local API Client simplifies interaction with the Sonic Device's lo
 To install the Watergate Local API Client, clone the repository and install the package using `pip`:
 
 ```bash
-git clone https://github.com/your-organization/watergate-local-api-python.git
+git clone https://github.com/watergate/watergate-local-api-python.git
 cd watergate-local-api-python
 pip install .
 ```

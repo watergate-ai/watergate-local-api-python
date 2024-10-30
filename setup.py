@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setup(
     name="watergate_local_api", # Replace with your own username
-    version="2024.1.0",
+    version="2024.1.1",
     author="Watergate",
     author_email="hi@watergate.ai",
     description="Python package to interact with the Watergate Local API.",
@@ -15,7 +15,7 @@ setup(
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: GPL 3.0",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: OS Independent",
     ]
 )

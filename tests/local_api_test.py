@@ -1,18 +1,17 @@
 import aiohttp
 import pytest
 from aioresponses import aioresponses
+import pytest_asyncio
 from watergate_local_api import WatergateLocalApiClient, WatergateApiException
 from watergate_local_api.models import DeviceState, NetworkingData, TelemetryData, AutoShutOffReport
 
-@pytest.fixture
-def client():
-    # Return an uninitialized instance of the client
+@pytest_asyncio.fixture
+async def client():
+    # Create and initialize the client within an async context
     return WatergateLocalApiClient(base_url="http://testserver")
 
 @pytest.mark.asyncio
 async def test_get_device_state(client):
-    await client.__aenter__()
-
     with aioresponses() as mock:
         mock.get("http://testserver/api/sonic", payload={
             "valveState": "closed",
@@ -35,12 +34,8 @@ async def test_get_device_state(client):
         assert device_state.uptime == 1024560
         assert device_state.water_meter.volume == 567820
 
-    await client.__aexit__(None, None, None)
-
 @pytest.mark.asyncio
 async def test_get_networking(client):
-    await client.__aenter__()
-
     with aioresponses() as mock:
         mock.get("http://testserver/api/sonic/networking", payload={
             "mqttConnected": True,
@@ -61,12 +56,8 @@ async def test_get_networking(client):
         assert networking_data.ssid == "MyWiFi"
         assert networking_data.rssi == -45
 
-    await client.__aexit__(None, None, None)
-
 @pytest.mark.asyncio
 async def test_get_telemetry_data(client):
-    await client.__aenter__()
-
     with aioresponses() as mock:
         mock.get("http://testserver/api/sonic/telemetry", payload={
             "flow": 6800,
@@ -84,24 +75,16 @@ async def test_get_telemetry_data(client):
         assert telemetry_data.ongoing_event.duration == 90
         assert "flow" in telemetry_data.errors
 
-    await client.__aexit__(None, None, None)
-
 @pytest.mark.asyncio
 async def test_patch_auto_shut_off(client):
-    await client.__aenter__()
-
     with aioresponses() as mock:
         mock.patch("http://testserver/api/sonic/auto-shut-off", status=204)
 
         result = await client.async_patch_auto_shut_off(enabled=True, duration=10, volume=5)
         assert result is True
 
-    await client.__aexit__(None, None, None)
-
 @pytest.mark.asyncio
 async def test_get_auto_shut_off_report(client):
-    await client.__aenter__()
-
     with aioresponses() as mock:
         mock.get("http://testserver/api/sonic/auto-shut-off/report", payload={
             "type": "VOLUME_THRESHOLD",
@@ -116,48 +99,32 @@ async def test_get_auto_shut_off_report(client):
         assert report.duration == 60
         assert report.timestamp == 1623456789
 
-    await client.__aexit__(None, None, None)
-
 @pytest.mark.asyncio
 async def test_set_webhook_url(client):
-    await client.__aenter__()
-
     with aioresponses() as mock:
         mock.patch("http://testserver/api/sonic/webhook", status=204)
 
         result = await client.async_set_webhook_url("http://webhook.url")
         assert result is True
 
-    await client.__aexit__(None, None, None)
-
 @pytest.mark.asyncio
 async def test_retry_logic(client):
-    await client.__aenter__()
-
     with aioresponses() as mock:
         mock.get("http://testserver/api/sonic", status=500)
 
         with pytest.raises(WatergateApiException):
             await client.async_get_device_state()
 
-    await client.__aexit__(None, None, None)
-
 @pytest.mark.asyncio
 async def test_custom_exception(client):
-    await client.__aenter__()
-
     with aioresponses() as mock:
         mock.get("http://testserver/api/sonic", exception=aiohttp.ClientError)
 
         with pytest.raises(WatergateApiException):
             await client.async_get_device_state()
 
-    await client.__aexit__(None, None, None)
-
 @pytest.mark.asyncio
 async def test_api_rate_limit_handling(client):
-    await client.__aenter__()
-
     # Simulate API rate limit response (HTTP 429)
     with aioresponses() as mock:
         mock.get("http://testserver/api/sonic", status=429)
@@ -165,12 +132,8 @@ async def test_api_rate_limit_handling(client):
         with pytest.raises(WatergateApiException):
             await client.async_get_device_state()
 
-    await client.__aexit__(None, None, None)
-
 @pytest.mark.asyncio
 async def test_get_networking_with_unexpected_status_code(client):
-    await client.__aenter__()
-
     # Simulate an unexpected status code (HTTP 403)
     with aioresponses() as mock:
         mock.get("http://testserver/api/sonic/networking", status=403)
@@ -178,12 +141,8 @@ async def test_get_networking_with_unexpected_status_code(client):
         with pytest.raises(WatergateApiException):
             await client.async_get_networking()
 
-    await client.__aexit__(None, None, None)
-
 @pytest.mark.asyncio
 async def test_set_webhook_url_invalid_response(client):
-    await client.__aenter__()
-
     # Simulate an invalid response when setting webhook (e.g., status 400)
     with aioresponses() as mock:
         mock.patch("http://testserver/api/sonic/webhook", status=400)
@@ -191,12 +150,8 @@ async def test_set_webhook_url_invalid_response(client):
         with pytest.raises(WatergateApiException):
             await client.async_set_webhook_url("http://invalid-webhook.url")
 
-    await client.__aexit__(None, None, None)
-
 @pytest.mark.asyncio
 async def test_auto_shut_off_report_with_missing_fields(client):
-    await client.__aenter__()
-
     # Response with some fields missing
     with aioresponses() as mock:
         mock.get("http://testserver/api/sonic/auto-shut-off/report", payload={"type": "VOLUME_THRESHOLD"})
@@ -204,5 +159,3 @@ async def test_auto_shut_off_report_with_missing_fields(client):
         report = await client.async_get_auto_shut_off_report()
         assert report.type == "VOLUME_THRESHOLD"
         assert report.volume is None  # Missing fields should default to None
-
-    await client.__aexit__(None, None, None)

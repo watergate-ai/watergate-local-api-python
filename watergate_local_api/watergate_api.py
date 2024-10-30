@@ -36,15 +36,7 @@ class WatergateLocalApiClient:
         """Initialize the API client."""
         self._base_url = base_url + "/api/sonic"
         self._timeout = aiohttp.ClientTimeout(total=timeout)
-        self._session: Optional[aiohttp.ClientSession] = None
-
-    async def __aenter__(self):
         self._session = aiohttp.ClientSession(timeout=self._timeout)
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        if self._session:
-            await self._session.close()
 
     async def _get(self, url: str, headers: dict) -> Optional[dict]:
         """Helper method to perform GET requests."""
@@ -53,10 +45,10 @@ class WatergateLocalApiClient:
 
         for attempt in RETRY_ATTEMPTS:  # Retry logic
             try:
-                async with self._session.get(url, headers=headers) as response:
-                    if response.status == 200:
-                        return await response.json()
-                    _LOGGER.error("Failed to fetch data from %s: %s", url, response.status)
+                response = await self._session.get(url, headers=headers)
+                if response.status == 200:
+                    return await response.json()
+                _LOGGER.error("Failed to fetch data from %s: %s", url, response.status)
             except aiohttp.ClientError as e:
                 _LOGGER.error("Network error occurred: %s", e)
             await asyncio.sleep(1)  # Wait before retrying
