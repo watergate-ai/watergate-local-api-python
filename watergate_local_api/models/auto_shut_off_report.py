@@ -8,7 +8,7 @@ class AutoShutOffReport:
 
     def __init__(
         self,
-        timestamp: float,
+        timestamp: int,
         type: str,
         duration: int,
         volume: int,

@@ -15,9 +15,9 @@ class DeviceState:
     def __init__(
         self,
         valve_state: str,
-        water_flow_indicator: str,
-        mqtt_status: str,
-        wifi_status: str,
+        water_flow_indicator: bool,
+        mqtt_status: bool,
+        wifi_status: bool,
         power_supply: str,
         firmware_version: str,
         uptime: int,
@@ -45,5 +45,5 @@ class DeviceState:
             power_supply=data.get(POWER_SUPPLY_FIELD),
             firmware_version=data.get(FIRMWARE_VERSION_FIELD),
             uptime=data.get(UPTIME_FIELD),
-            water_meter=WaterMeter(**(data.get(WATER_METER_FIELD) or {}))
+            water_meter=WaterMeter(**data.get(WATER_METER_FIELD)) if data.get(WATER_METER_FIELD) else None
         )

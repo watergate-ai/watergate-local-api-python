@@ -14,7 +14,7 @@ class TelemetryData:
         flow: float,
         pressure: float,
         water_temperature: float,
-        ongoing_event: Event,
+        ongoing_event: Event | None,
         errors: list[str],
     ) -> None:
         """Create an Telemetry Data object."""
@@ -31,6 +31,6 @@ class TelemetryData:
             flow=data.get(FLOW_FIELD),
             pressure=data.get(PRESSURE_FIELD),
             water_temperature=data.get(TEMPERATURE_FIELD),
-            ongoing_event=Event(**data.get(EVENT_FIELD)),
+            ongoing_event=Event(**data.get(EVENT_FIELD)) if data.get(EVENT_FIELD) else None,
             errors=data.get(ERRORS_FIELD)
         )
