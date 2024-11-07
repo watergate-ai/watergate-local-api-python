@@ -6,6 +6,7 @@ MQTT_STATUS_FIELD = "mqttConnected"
 WIFI_STATUS_FIELD = "wifiConnected"
 POWER_SUPPLY_FIELD = "powerSupply"
 FIRMWARE_VERSION_FIELD = "firmwareVersion"
+SERIAL_NUMBER_FIELD = "serialNumber"
 UPTIME_FIELD = "uptime"
 WATER_METER_FIELD = "waterMeter"
 
@@ -22,6 +23,7 @@ class DeviceState:
         firmware_version: str,
         uptime: int,
         water_meter: WaterMeter,
+        serial_number: str,
     ) -> None:
         """Create an Device State object."""
 
@@ -33,6 +35,7 @@ class DeviceState:
         self.firmware_version = firmware_version
         self.uptime = uptime
         self.water_meter = water_meter
+        self.serial_number = serial_number
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -44,6 +47,7 @@ class DeviceState:
             wifi_status=data.get(WIFI_STATUS_FIELD),
             power_supply=data.get(POWER_SUPPLY_FIELD),
             firmware_version=data.get(FIRMWARE_VERSION_FIELD),
+            serial_number=data.get(SERIAL_NUMBER_FIELD),
             uptime=data.get(UPTIME_FIELD),
             water_meter=WaterMeter(**data.get(WATER_METER_FIELD)) if data.get(WATER_METER_FIELD) else None
         )

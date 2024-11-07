@@ -21,7 +21,8 @@ async def test_get_device_state(client):
             "powerSupply": "external",
             "firmwareVersion": "2024.1.0",
             "waterMeter": {"volume": 567820, "duration": 3908},
-            "uptime": 1024560
+            "uptime": 1024560,
+            "serialNumber": "123123"
         })
 
         device_state = await client.async_get_device_state()

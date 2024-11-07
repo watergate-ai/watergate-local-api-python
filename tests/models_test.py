@@ -12,7 +12,7 @@ def test_telemetry_data_should_be_able_build_without_ongoing_even():
     
 def test_device_state_should_be_able_to_build_when_there_is_no_water_meter():
     device_state = DeviceState.from_dict({"waterFlowing" : False, "mqttConnected" : False, "wifiConnected" : False, 
-                                            "powerSupply" : "battery", "firmwareVersion" : "1.0.0", "uptime": 1234})
+                                            "powerSupply" : "battery", "firmwareVersion" : "1.0.0", "uptime": 1234, "serialNumber": "123123"})
     assert device_state.water_flow_indicator == False
     assert device_state.mqtt_status == False
     assert device_state.wifi_status == False
@@ -20,4 +20,5 @@ def test_device_state_should_be_able_to_build_when_there_is_no_water_meter():
     assert device_state.firmware_version == "1.0.0"
     assert device_state.uptime == 1234
     assert device_state.water_meter is None
+    assert device_state.serial_number == "123123"
     
