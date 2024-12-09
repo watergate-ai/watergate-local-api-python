@@ -101,13 +101,26 @@ jobs:
       - name: Increment Version
         id: increment_version
         run: |
-          VERSION=${{ env.version }}
+          # Ensure VERSION is correctly set
+          if [ -z "${{ env.version }}" ]; then
+            VERSION=$(cat version.txt)
+          else
+            VERSION=${{ env.version }}
+          fi
+
+          # Extract components of the version
           YEAR=$(date +%Y)
+          CURRENT_YEAR=$(echo $VERSION | cut -d '.' -f 1)
           RELEASE=$(echo $VERSION | cut -d '.' -f 2)
 
-          # Increment the release version after deployment
-          NEW_VERSION="$YEAR.$((RELEASE + 1)).1"
+          # Reset release if year changes, otherwise increment the release
+          if [ "$CURRENT_YEAR" != "$YEAR" ]; then
+            NEW_VERSION="$YEAR.1.1"
+          else
+            NEW_VERSION="$YEAR.$((RELEASE + 1)).1"
+          fi
 
+          # Save the new version
           echo $NEW_VERSION > version.txt
           echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
 
