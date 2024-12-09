@@ -3,9 +3,12 @@ from setuptools import setup, find_packages
 with open("README.md", "r") as f:
     long_description = f.read()
 
+with open("version.txt", "r") as f:
+    version = f.read()
+
 setup(
     name="watergate_local_api", # Replace with your own username
-    version="2024.2.1",
+    version=version,
     author="Watergate",
     author_email="hi@watergate.ai",
     description="Python package to interact with the Watergate Local API.",
