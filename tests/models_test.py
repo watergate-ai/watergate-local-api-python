@@ -14,9 +14,9 @@ def test_telemetry_data_should_be_able_build_without_ongoing_even():
 def test_device_state_should_be_able_to_build_when_there_is_no_water_meter():
     device_state = DeviceState.from_dict({"waterFlowing" : False, "mqttConnected" : False, "wifiConnected" : False, 
                                             "powerSupply" : "battery", "firmwareVersion" : "1.0.0", "uptime": 1234, "serialNumber": "123123"})
-    assert device_state.water_flow_indicator == False
-    assert device_state.mqtt_status == False
-    assert device_state.wifi_status == False
+    assert device_state.water_flow_indicator is False
+    assert device_state.mqtt_status is False
+    assert device_state.wifi_status is False
     assert device_state.power_supply == "battery"
     assert device_state.firmware_version == "1.0.0"
     assert device_state.uptime == 1234
@@ -52,9 +52,9 @@ def test_device_state_v2_with_complete_data():
         }
     })
     assert device_state.valve_state == "open"
-    assert device_state.water_flow_indicator == True
-    assert device_state.mqtt_status == True
-    assert device_state.wifi_status == True
+    assert device_state.water_flow_indicator is True
+    assert device_state.mqtt_status is True
+    assert device_state.wifi_status is True
     assert device_state.power_supply == "external"
     assert device_state.firmware_version == "2024.2.1"
     assert device_state.uptime == 5000
@@ -99,4 +99,20 @@ def test_device_state_v2_with_partial_water_meter():
     assert device_state.water_meter_positive.volume == 50000
     assert device_state.water_meter_positive.duration == 250
     assert device_state.water_meter_negative is None
-    
+
+def test_device_state_v2_with_null_water_meter():
+    """Test DeviceStateV2 with null water meter."""
+    device_state = DeviceStateV2.from_dict({
+        "valveState": "opening",
+        "waterFlowing": True,
+        "mqttConnected": True,
+        "wifiConnected": True,
+        "powerSupply": "external+battery",
+        "firmwareVersion": "2024.2.0",
+        "uptime": 2500,
+        "serialNumber": "def456",
+        "waterMeter": None
+    })
+    assert device_state.valve_state == "opening"
+    assert device_state.water_meter_positive is None
+    assert device_state.water_meter_negative is None
