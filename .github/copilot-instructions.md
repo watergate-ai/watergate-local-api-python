@@ -8,6 +8,31 @@ This is a Python client library for the **Watergate/Sonic Device Local API**. It
 - **Async Framework**: `aiohttp` for all HTTP operations
 - **Testing**: `pytest` with `pytest-asyncio` and `aioresponses`
 - **Package Management**: setuptools
+- **Virtual Environment**: `.venv/` - ALWAYS use the project's venv for all operations
+
+## 🚨 CRITICAL: Virtual Environment Usage
+
+**ALWAYS activate and use the project's virtual environment (`.venv/`) for ALL operations:**
+
+- ✅ **CORRECT**: Activate venv before running any Python commands
+  ```bash
+  source .venv/bin/activate  # On macOS/Linux
+  .venv\Scripts\activate     # On Windows
+  ```
+
+- ❌ **WRONG**: Running Python commands without activating venv
+  ```bash
+  python -m pytest  # DON'T do this without venv activated
+  pip install aiohttp  # DON'T do this in global environment
+  ```
+
+### Virtual Environment Rules
+1. **Always activate venv first** before any pip install, pytest, or python commands
+2. **Never install packages globally** - all dependencies go in `.venv/`
+3. **Check venv is activated** - prompt should show `(.venv)` prefix
+4. **Create venv if missing**: `python3 -m venv .venv`
+5. **When running tests**: Activate venv, then run `pytest`
+6. **When installing dependencies**: Activate venv, then run `pip install -r requirements.txt`
 
 ## Critical Design Patterns
 
@@ -232,29 +257,45 @@ watergate_local_api/
 
 ## Development Workflow
 
+### Environment Setup (REQUIRED FIRST)
+**Before ANY development work:**
+```bash
+# 1. Activate virtual environment
+source .venv/bin/activate
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Verify installation
+pytest --version
+```
+
 ### Adding New API Endpoint
-1. Define endpoint URL constant
-2. Define versioned Accept/Content-Type headers
-3. Create async method in `WatergateLocalApiClient`
-4. Implement retry logic
-5. Create/update model class if needed
-6. Add comprehensive tests
-7. Update this documentation
+1. **ACTIVATE VENV FIRST**: `source .venv/bin/activate`
+2. Define endpoint URL constant
+3. Define versioned Accept/Content-Type headers
+4. Create async method in `WatergateLocalApiClient`
+5. Implement retry logic
+6. Create/update model class if needed
+7. Add comprehensive tests (run with `pytest` in activated venv)
+8. Update this documentation
 
 ### Adding New Model
-1. Create file in `models/` directory
-2. Define field constants at module level
-3. Create class with `__init__` and `from_dict`
-4. Export in `models/__init__.py`
-5. Add tests in `tests/models_test.py`
-6. Update this documentation
+1. **ACTIVATE VENV FIRST**: `source .venv/bin/activate`
+2. Create file in `models/` directory
+3. Define field constants at module level
+4. Create class with `__init__` and `from_dict`
+5. Export in `models/__init__.py`
+6. Add tests in `tests/models_test.py` (run with `pytest` in activated venv)
+7. Update this documentation
 
 ### Adding New Webhook Event
-1. Add event data class in `webhook_model.py`
-2. Update `WebhookEvent.parse_webhook_event()` method
-3. Add event type to documentation
-4. Create tests for event parsing
-5. Update this documentation
+1. **ACTIVATE VENV FIRST**: `source .venv/bin/activate`
+2. Add event data class in `webhook_model.py`
+3. Update `WebhookEvent.parse_webhook_event()` method
+4. Add event type to documentation
+5. Create tests for event parsing (run with `pytest` in activated venv)
+6. Update this documentation
 
 ---
 

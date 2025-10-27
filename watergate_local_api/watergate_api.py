@@ -35,25 +35,27 @@ class WatergateApiException(Exception):
 class WatergateLocalApiClient:
     """API Client for interacting with the external service."""
 
-    def __init__(self, base_url: str, timeout: int = 10) -> None:
-        """Initialize the API client."""
+    def __init__(self, base_url: str, timeout: int = 10, session: Optional[aiohttp.ClientSession] = None) -> None:
+        """Initialize the API client. Optionally inject aiohttp session for Home Assistant compatibility."""
         self._base_url = base_url + "/api/sonic"
         self._timeout = aiohttp.ClientTimeout(total=timeout)
-        self._session = None
+        self._session = session
+        self._session_owner = session is None
 
     async def _ensure_session(self):
-        """Ensure the session is open, creating it if necessary."""
-        if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession(timeout=self._timeout, json_serialize=lambda data: json.dumps(data, separators=(',', ':')))
-            _LOGGER.debug("Created a new aiohttp session.")
+        """Ensure the session is open, creating it if necessary (only if owned)."""
+        if self._session is None or (hasattr(self._session, "closed") and self._session.closed):
+            if self._session_owner:
+                self._session = aiohttp.ClientSession(timeout=self._timeout, json_serialize=lambda data: json.dumps(data, separators=(',', ':')))
+                _LOGGER.debug("Created a new aiohttp session.")
 
     async def __aenter__(self):
-        """Enter the context and create the session."""
-        await self._ensure_session()  # Ensure session is created on enter
+        """Enter the context and create the session if owned."""
+        await self._ensure_session()
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):
-        """Exit the context and close the session."""
+        """Exit the context and close the session if owned."""
         await self.async_close()
 
     async def _get(self, url: str, headers: dict) -> Optional[dict]:
@@ -86,8 +88,8 @@ class WatergateLocalApiClient:
         raise WatergateApiException(f"Failed to put data to {url} after 3 attempts")
 
     async def async_close(self):
-        """Explicitly close the session."""
-        if self._session and not self._session.closed:
+        """Explicitly close the session if owned."""
+        if self._session_owner and self._session and not self._session.closed:
             await self._session.close()
             _LOGGER.debug("Closed the aiohttp session.")
 
