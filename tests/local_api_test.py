@@ -3,7 +3,6 @@ import pytest
 from aioresponses import aioresponses
 import pytest_asyncio
 from watergate_local_api import WatergateLocalApiClient, WatergateApiException
-from watergate_local_api.models import DeviceState, NetworkingData, TelemetryData, AutoShutOffReport
 
 @pytest_asyncio.fixture
 async def client():
@@ -180,3 +179,65 @@ async def test_auto_shut_off_report_with_missing_fields(client):
         report = await client.async_get_auto_shut_off_report()
         assert report.type == "VOLUME_THRESHOLD"
         assert report.volume is None  # Missing fields should default to None
+
+@pytest.mark.asyncio
+async def test_get_device_state_v2(client):
+    """Test fetching device state V2 with positive and negative water meters."""
+    with aioresponses() as mock:
+        mock.get("http://testserver/api/sonic/", payload={
+            "valveState": "open",
+            "waterFlowing": True,
+            "mqttConnected": True,
+            "wifiConnected": True,
+            "powerSupply": "external+battery",
+            "firmwareVersion": "2024.2.1",
+            "uptime": 5000,
+            "serialNumber": "abc123",
+            "waterMeter": {
+                "positive": {"volume": 100000, "duration": 500},
+                "negative": {"volume": 1000, "duration": 10}
+            }
+        })
+
+        device_state = await client.async_get_device_state_v2()
+        assert device_state.valve_state == "open"
+        assert device_state.water_flow_indicator is True
+        assert device_state.mqtt_status is True
+        assert device_state.wifi_status is True
+        assert device_state.power_supply == "external+battery"
+        assert device_state.firmware_version == "2024.2.1"
+        assert device_state.uptime == 5000
+        assert device_state.serial_number == "abc123"
+        assert device_state.water_meter_positive.volume == 100000
+        assert device_state.water_meter_positive.duration == 500
+        assert device_state.water_meter_negative.volume == 1000
+        assert device_state.water_meter_negative.duration == 10
+
+@pytest.mark.asyncio
+async def test_get_device_state_v2_without_water_meter(client):
+    """Test device state V2 with missing water meter data."""
+    with aioresponses() as mock:
+        mock.get("http://testserver/api/sonic/", payload={
+            "valveState": "closed",
+            "waterFlowing": False,
+            "mqttConnected": False,
+            "wifiConnected": True,
+            "powerSupply": "battery",
+            "firmwareVersion": "2024.1.0",
+            "uptime": 1234,
+            "serialNumber": "xyz789"
+        })
+
+        device_state = await client.async_get_device_state_v2()
+        assert device_state.valve_state == "closed"
+        assert device_state.water_meter_positive is None
+        assert device_state.water_meter_negative is None
+
+@pytest.mark.asyncio
+async def test_get_device_state_v2_network_error(client):
+    """Test device state V2 network error handling."""
+    with aioresponses() as mock:
+        mock.get("http://testserver/api/sonic/", status=500)
+
+        with pytest.raises(WatergateApiException):
+            await client.async_get_device_state_v2()
