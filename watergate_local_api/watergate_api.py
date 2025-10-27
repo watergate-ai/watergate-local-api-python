@@ -44,10 +44,9 @@ class WatergateLocalApiClient:
 
     async def _ensure_session(self):
         """Ensure the session is open, creating it if necessary (only if owned)."""
-        if self._session is None or (hasattr(self._session, "closed") and self._session.closed):
-            if self._session_owner:
-                self._session = aiohttp.ClientSession(timeout=self._timeout, json_serialize=lambda data: json.dumps(data, separators=(',', ':')))
-                _LOGGER.debug("Created a new aiohttp session.")
+        if self._session_owner and (self._session is None or self._session.closed):
+            self._session = aiohttp.ClientSession(timeout=self._timeout, json_serialize=lambda data: json.dumps(data, separators=(',', ':')))
+            _LOGGER.debug("Created a new aiohttp session.")
 
     async def __aenter__(self):
         """Enter the context and create the session if owned."""

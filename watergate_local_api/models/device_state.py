@@ -1,3 +1,4 @@
+from typing import Optional
 from .water_meter import WaterMeter
 
 VALVE_STATE_FIELD = "valveState"
@@ -11,6 +12,20 @@ UPTIME_FIELD = "uptime"
 WATER_METER_FIELD = "waterMeter"
 POSITIVE_FIELD = "positive"
 NEGATIVE_FIELD = "negative"
+
+
+def _create_water_meter_from_data(data: Optional[dict]) -> Optional[WaterMeter]:
+    """Helper function to create WaterMeter from dict data if present.
+    
+    Args:
+        data: Dictionary containing water meter data, or None
+        
+    Returns:
+        WaterMeter instance if data is present, None otherwise
+    """
+    if data is None:
+        return None
+    return WaterMeter.from_dict(data)
 
 class DeviceState:
     """Represents the device state."""
@@ -51,7 +66,7 @@ class DeviceState:
             firmware_version=data.get(FIRMWARE_VERSION_FIELD),
             serial_number=data.get(SERIAL_NUMBER_FIELD),
             uptime=data.get(UPTIME_FIELD),
-            water_meter=WaterMeter(**data.get(WATER_METER_FIELD)) if data.get(WATER_METER_FIELD) else None
+            water_meter=_create_water_meter_from_data(data.get(WATER_METER_FIELD))
         )
 
 
@@ -67,8 +82,8 @@ class DeviceStateV2:
         power_supply: str,
         firmware_version: str,
         uptime: int,
-        water_meter_positive: WaterMeter,
-        water_meter_negative: WaterMeter,
+        water_meter_positive: Optional[WaterMeter],
+        water_meter_negative: Optional[WaterMeter],
         serial_number: str,
     ) -> None:
         """Create a Device State V2 object."""
@@ -87,7 +102,7 @@ class DeviceStateV2:
     @classmethod
     def from_dict(cls, data: dict):
         """Create a Device State V2 object from a dictionary."""
-        water_meter_data = data.get(WATER_METER_FIELD, {})
+        water_meter_data = data.get(WATER_METER_FIELD) or {}
         return cls(
             valve_state=data.get(VALVE_STATE_FIELD),
             water_flow_indicator=data.get(WATER_FLOW_INDICATOR_FIELD),
@@ -97,6 +112,6 @@ class DeviceStateV2:
             firmware_version=data.get(FIRMWARE_VERSION_FIELD),
             serial_number=data.get(SERIAL_NUMBER_FIELD),
             uptime=data.get(UPTIME_FIELD),
-            water_meter_positive=WaterMeter.from_dict(water_meter_data.get(POSITIVE_FIELD)) if water_meter_data.get(POSITIVE_FIELD) else None,
-            water_meter_negative=WaterMeter.from_dict(water_meter_data.get(NEGATIVE_FIELD)) if water_meter_data.get(NEGATIVE_FIELD) else None
+            water_meter_positive=_create_water_meter_from_data(water_meter_data.get(POSITIVE_FIELD)),
+            water_meter_negative=_create_water_meter_from_data(water_meter_data.get(NEGATIVE_FIELD))
         )
