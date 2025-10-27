@@ -7,6 +7,7 @@ import asyncio
 
 from .models import (
     DeviceState,
+    DeviceStateV2,
     NetworkingData,
     TelemetryData,
     AutoShutOffState,
@@ -95,6 +96,12 @@ class WatergateLocalApiClient:
         headers = {ACCEPT_HEADER: "application/vnd.wtg.local.device-state.v1+json"}
         data = await self._get(self._base_url + "/", headers)
         return DeviceState.from_dict(data) if data else None
+
+    async def async_get_device_state_v2(self) -> Optional[DeviceStateV2]:
+        """GET /api/sonic/ - Get device state (API v2 with positive/negative water meter)."""
+        headers = {ACCEPT_HEADER: "application/vnd.wtg.local.device-state.v2+json"}
+        data = await self._get(self._base_url + "/", headers)
+        return DeviceStateV2.from_dict(data) if data else None
 
     async def async_get_networking(self) -> Optional[NetworkingData]:
         """GET /api/sonic/networking - Get networking."""
