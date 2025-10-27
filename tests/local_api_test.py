@@ -7,7 +7,10 @@ from watergate_local_api import WatergateLocalApiClient, WatergateApiException
 @pytest_asyncio.fixture
 async def client():
     # Create and initialize the client within an async context
-    return WatergateLocalApiClient(base_url="http://testserver")
+    client = WatergateLocalApiClient(base_url="http://testserver")
+    yield client
+    # Ensure proper cleanup after each test
+    await client.async_close()
 
 @pytest.mark.asyncio
 async def test_get_device_state(client):
@@ -241,3 +244,125 @@ async def test_get_device_state_v2_network_error(client):
 
         with pytest.raises(WatergateApiException):
             await client.async_get_device_state_v2()
+
+@pytest.mark.asyncio
+async def test_injected_session():
+    """Test that an injected aiohttp session is used and not closed by the client."""
+    # Create a session to inject
+    injected_session = aiohttp.ClientSession()
+    
+    try:
+        # Create client with injected session
+        client = WatergateLocalApiClient(base_url="http://testserver", session=injected_session)
+        
+        with aioresponses() as mock:
+            mock.get("http://testserver/api/sonic/", payload={
+                "valveState": "open",
+                "waterFlowing": True,
+                "mqttConnected": True,
+                "wifiConnected": True,
+                "powerSupply": "external",
+                "firmwareVersion": "2024.1.0",
+                "waterMeter": {"volume": 100, "duration": 10},
+                "uptime": 1000,
+                "serialNumber": "test123"
+            })
+            
+            device_state = await client.async_get_device_state()
+            assert device_state.valve_state == "open"
+        
+        # Close the client - should NOT close the injected session
+        await client.async_close()
+        
+        # Verify the injected session is still open
+        assert not injected_session.closed
+    finally:
+        # Clean up the injected session
+        await injected_session.close()
+
+@pytest.mark.asyncio
+async def test_owned_session_is_closed():
+    """Test that a client-owned session is properly closed."""
+    client = WatergateLocalApiClient(base_url="http://testserver")
+    
+    with aioresponses() as mock:
+        mock.get("http://testserver/api/sonic/", payload={
+            "valveState": "closed",
+            "waterFlowing": False,
+            "mqttConnected": True,
+            "wifiConnected": True,
+            "powerSupply": "battery",
+            "firmwareVersion": "2024.1.0",
+            "waterMeter": {"volume": 200, "duration": 20},
+            "uptime": 2000,
+            "serialNumber": "test456"
+        })
+        
+        device_state = await client.async_get_device_state()
+        assert device_state.valve_state == "closed"
+    
+    # Get reference to the session before closing
+    session = client._session
+    assert session is not None
+    assert not session.closed
+    
+    # Close the client - should close the owned session
+    await client.async_close()
+    
+    # Verify the owned session is closed
+    assert session.closed
+
+@pytest.mark.asyncio
+async def test_context_manager_with_injected_session():
+    """Test context manager doesn't close injected session."""
+    injected_session = aiohttp.ClientSession()
+    
+    try:
+        async with WatergateLocalApiClient(base_url="http://testserver", session=injected_session) as client:
+            with aioresponses() as mock:
+                mock.get("http://testserver/api/sonic/", payload={
+                    "valveState": "opening",
+                    "waterFlowing": False,
+                    "mqttConnected": True,
+                    "wifiConnected": True,
+                    "powerSupply": "external",
+                    "firmwareVersion": "2024.1.0",
+                    "waterMeter": {"volume": 300, "duration": 30},
+                    "uptime": 3000,
+                    "serialNumber": "test789"
+                })
+                
+                device_state = await client.async_get_device_state()
+                assert device_state.valve_state == "opening"
+        
+        # After exiting context, injected session should still be open
+        assert not injected_session.closed
+    finally:
+        await injected_session.close()
+
+@pytest.mark.asyncio
+async def test_context_manager_with_owned_session():
+    """Test context manager closes owned session."""
+    session_ref = None
+    
+    async with WatergateLocalApiClient(base_url="http://testserver") as client:
+        with aioresponses() as mock:
+            mock.get("http://testserver/api/sonic/", payload={
+                "valveState": "closing",
+                "waterFlowing": True,
+                "mqttConnected": True,
+                "wifiConnected": True,
+                "powerSupply": "battery",
+                "firmwareVersion": "2024.1.0",
+                "waterMeter": {"volume": 400, "duration": 40},
+                "uptime": 4000,
+                "serialNumber": "test000"
+            })
+            
+            device_state = await client.async_get_device_state()
+            assert device_state.valve_state == "closing"
+            session_ref = client._session
+    
+    # After exiting context, owned session should be closed
+    assert session_ref is not None
+    assert session_ref.closed

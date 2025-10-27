@@ -72,11 +72,38 @@ A **Python async HTTP client library** for communicating with Watergate/Sonic wa
 | Layer | Technology | Version | Purpose |
 |-------|-----------|---------|---------|
 | Language | Python | 3.x | Core programming language |
+| Virtual Environment | venv | Built-in | **REQUIRED**: `.venv/` for all operations |
 | HTTP Client | aiohttp | 3.13.1 | Async HTTP operations |
 | Testing | pytest | 8.4.2 | Test framework |
 | Async Testing | pytest-asyncio | 1.2.0 | Async test support |
 | HTTP Mocking | aioresponses | 0.7.8 | HTTP response mocking |
 | Package Build | setuptools | Latest | Distribution packaging |
+
+### 🚨 CRITICAL: Virtual Environment Requirements
+
+**ALL Python operations MUST be run within the project's virtual environment (`.venv/`):**
+
+#### Setup Virtual Environment
+```bash
+# Create venv if it doesn't exist
+python3 -m venv .venv
+
+# Activate venv (REQUIRED before every operation)
+source .venv/bin/activate  # macOS/Linux
+.venv\Scripts\activate     # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+#### Virtual Environment Rules
+1. ✅ **ALWAYS activate venv first**: `source .venv/bin/activate`
+2. ✅ **Verify activation**: Terminal prompt shows `(.venv)` prefix
+3. ✅ **All pip installs go in venv**: Never install globally
+4. ✅ **All pytest runs in venv**: `pytest` after activation
+5. ✅ **All python commands in venv**: Including builds, installs, tests
+6. ❌ **NEVER run without venv**: This causes dependency conflicts
+7. ❌ **NEVER install packages globally**: Always in `.venv/`
 
 ### Key Dependencies
 ```python
@@ -238,6 +265,10 @@ if isinstance(event, TelemetryEventData):
 
 ### Pattern 1: Adding a New GET Endpoint
 
+**Prerequisites**: 
+1. ✅ **ACTIVATE VENV**: `source .venv/bin/activate`
+2. ✅ **VERIFY ACTIVATION**: Check for `(.venv)` in prompt
+
 **Template**:
 ```python
 # 1. Define endpoint constant
@@ -265,6 +296,10 @@ async def async_get_new_resource(self) -> Optional[NewResourceData]:
 
 ### Pattern 2: Adding a New PUT/PATCH Endpoint
 
+**Prerequisites**: 
+1. ✅ **ACTIVATE VENV**: `source .venv/bin/activate`
+2. ✅ **VERIFY ACTIVATION**: Check for `(.venv)` in prompt
+
 **Template**:
 ```python
 async def async_update_resource(self, param: str) -> bool:
@@ -285,6 +320,10 @@ async def async_update_resource(self, param: str) -> bool:
 - [ ] Write tests for success and failure
 
 ### Pattern 3: Adding a New Model
+
+**Prerequisites**: 
+1. ✅ **ACTIVATE VENV**: `source .venv/bin/activate`
+2. ✅ **VERIFY ACTIVATION**: Check for `(.venv)` in prompt
 
 **Template**:
 ```python
@@ -372,6 +411,11 @@ def parse_webhook_event(cls, data: dict) -> Union[...]:
 - [ ] Document event structure
 
 ### Pattern 5: Writing Comprehensive Tests
+
+**Prerequisites**: 
+1. ✅ **ACTIVATE VENV**: `source .venv/bin/activate`
+2. ✅ **VERIFY ACTIVATION**: Check for `(.venv)` in prompt
+3. ✅ **INSTALL TEST DEPS**: `pip install -r requirements.txt`
 
 **Template**:
 ```python
@@ -650,8 +694,23 @@ Every model must test:
 
 ## Quick Reference Card
 
-### Common Commands
+### Virtual Environment Commands (ALWAYS RUN FIRST)
 ```bash
+# Activate venv (REQUIRED before any other command)
+source .venv/bin/activate
+
+# Verify activation
+which python  # Should show: .../watergate-local-api-python/.venv/bin/python
+
+# Deactivate when done
+deactivate
+```
+
+### Common Commands (Run AFTER activating venv)
+```bash
+# FIRST: Activate venv
+source .venv/bin/activate
+
 # Install package
 pip install .
 
@@ -688,6 +747,7 @@ from watergate_local_api.models import (
 ```
 
 ### Quick Debug Checklist
+- [ ] **Is venv activated?** (Check for `.venv` in prompt)
 - [ ] Is method async?
 - [ ] Using aiohttp (not requests)?
 - [ ] Session being closed?
@@ -696,6 +756,7 @@ from watergate_local_api.models import (
 - [ ] Logging errors?
 - [ ] Returning Optional[Model]?
 - [ ] Tests written?
+- [ ] **Tests run in venv?** (`pytest` after `source .venv/bin/activate`)
 
 ---
 
