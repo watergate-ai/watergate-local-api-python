@@ -469,28 +469,44 @@ async def test_operation_missing_fields(client):
 
 ### Endpoint Inventory
 
+Full coverage of the Sonic Local API **2026.1.0** spec.
+
 | Method | Endpoint | Purpose | Response Status | Model |
 |--------|----------|---------|----------------|-------|
-| GET | `/` | Get device state | 200 | `DeviceState` |
-| GET | `/networking` | Get network info | 200 | `NetworkingData` |
-| GET | `/telemetry` | Get telemetry data | 200 | `TelemetryData` |
-| GET | `/auto-shut-off` | Get auto shut-off state | 200 | `AutoShutOffState` |
-| PATCH | `/auto-shut-off` | Update auto shut-off | 204 | N/A |
-| GET | `/auto-shut-off/report` | Get last report | 200/204 | `AutoShutOffReport` or None |
-| PUT | `/webhook` | Set webhook URL | 200/204 | N/A |
+| GET | `/` | Get device state (v1 / v2 / v3) | 200 | `DeviceState` / `DeviceStateV2` / `DeviceStateV3` |
+| GET | `/valve` | Get valve state | 200 | `ValveState` |
 | PUT | `/valve` | Set valve state | 200/204 | N/A |
+| GET | `/buzzer` | Get buzzer status | 200 | `BuzzerStatus` |
+| PUT | `/buzzer` | Control buzzer (start/stop) | 200/204 | N/A |
+| GET | `/buzzer/sounds` | List supported sounds | 200 | `BuzzerSounds` |
+| GET | `/telemetry` | Get telemetry data | 200 | `TelemetryData` |
+| GET | `/power` | Get power supply status | 200 | `PowerSupply` |
+| GET | `/networking` | Get network info | 200 | `NetworkingData` |
+| PUT | `/networking` | Update Wi-Fi configuration | 200/204 | N/A |
+| GET | `/auto-shut-off` | Get auto shut-off state | 200 | `AutoShutOffState` |
+| PUT | `/auto-shut-off` | Update auto shut-off (2026.1.0+, documented) | 204 | N/A |
+| PATCH | `/auto-shut-off` | Update auto shut-off (legacy, undocumented) | 204 | N/A |
+| GET | `/auto-shut-off/report` | Get last report | 200/204 | `AutoShutOffReport` or None |
+| PUT | `/command` | Execute command (e.g. reboot) | 200/204 | N/A |
+| GET | `/webhook` | Get webhook URL | 200/204 | `str` or None |
+| PUT | `/webhook` | Set webhook URL | 200/204 | N/A |
+| DELETE | `/webhook` | Clear webhook URL | 200/204 | N/A |
 
 ### Media Type Matrix
 
 | Endpoint | Accept (GET) | Content-Type (PUT/PATCH) |
 |----------|-------------|-------------------------|
-| `/` | `application/vnd.wtg.local.device-state.v1+json` | N/A |
-| `/networking` | `application/vnd.wtg.local.networking.v1+json` | N/A |
+| `/` | `application/vnd.wtg.local.device-state.v1+json` (also `.v2`, `.v3`) | N/A |
+| `/valve` | `application/vnd.wtg.local.valve.v1+json` | `application/vnd.wtg.local.valve-change.v1+json` |
+| `/buzzer` | `application/vnd.wtg.local.buzzer.v1+json` | `application/vnd.wtg.local.buzzer-control.v1+json` |
+| `/buzzer/sounds` | `application/vnd.wtg.local.buzzer-sounds.v1+json` | N/A |
 | `/telemetry` | `application/vnd.wtg.local.telemetry.v1+json` | N/A |
-| `/auto-shut-off` | `application/vnd.wtg.local.auto-shut-off.v1+json` | `application/vnd.wtg.local.auto-shut-off.v1+json` |
+| `/power` | `application/vnd.wtg.local.power.v1+json` | N/A |
+| `/networking` | `application/vnd.wtg.local.networking.v1+json` | `application/vnd.wtg.local.network-change.v1+json` |
+| `/auto-shut-off` | `application/vnd.wtg.local.auto-shut-off.v1+json` | `application/vnd.wtg.local.auto-shut-off-change.v1+json` (PUT) / `application/vnd.wtg.local.auto-shut-off.v1+json` (legacy PATCH) |
 | `/auto-shut-off/report` | `application/vnd.wtg.local.auto-shut-off.report.v1+json` | N/A |
-| `/webhook` | N/A | `application/vnd.wtg.local.webhook.v1+json` |
-| `/valve` | N/A | `application/vnd.wtg.local.valve-change.v1+json` |
+| `/command` | N/A | `application/vnd.wtg.local.command.v1+json` |
+| `/webhook` | `application/vnd.wtg.local.webhook.v1+json` | `application/vnd.wtg.local.webhook.v1+json` |
 
 ---
 
@@ -564,6 +580,39 @@ async def test_operation_missing_fields(client):
 **Fields**:
 - `volume: int` - Current event volume in liters
 - `duration: int` - Current event duration in minutes
+
+### ValveState
+**Purpose**: Current valve position (GET `/valve`)
+
+**Fields**:
+- `state: str` - "open", "closed", "opening", "closing", or "unknown"
+
+### PowerSupply
+**Purpose**: Power supply status (GET `/power`)
+
+**Fields**:
+- `battery: bool` - Running on battery
+- `external: bool` - External supply present
+- `batteries_voltage: int | None` - Battery voltage in mV (omitted on external-only power)
+
+### BuzzerStatus
+**Purpose**: Buzzer playback status (GET `/buzzer`)
+
+**Fields**:
+- `playing: bool` - Whether a sound is currently playing
+- `sound: str | None` - Name of the current sound, or None when idle
+
+### BuzzerSounds
+**Purpose**: Supported buzzer sounds (GET `/buzzer/sounds`)
+
+**Fields**:
+- `sounds: list[str]` - e.g. ["beep", "christmas_1", "christmas_2"]
+
+### DeviceStateV3
+**Purpose**: Device state for firmware 2025.2.0+; extends `DeviceStateV2`
+
+**Fields**: all `DeviceStateV2` fields, plus
+- `buzzer_playing: bool | None` - Whether the buzzer is currently playing
 
 ---
 
@@ -688,6 +737,8 @@ Every model must test:
 
 ### Version History
 - **2024.4.1**: Initial comprehensive documentation
+- **2025.2.0**: Full 2025.2.0 firmware coverage. Added GET `/valve`, GET `/power`, GET/PUT `/buzzer`, GET `/buzzer/sounds`, PUT `/networking`, PUT `/command` (reboot), GET/DELETE `/webhook`, and `async_get_device_state_v3` (`DeviceStateV3` with `buzzerPlaying`). Added the `_delete()` helper. New models: `ValveState`, `PowerSupply`, `BuzzerStatus`, `BuzzerSounds`, `DeviceStateV3`. Corrected `async_set_webhook_url` docstring (PUT, not PATCH).
+- **2026.1.0**: Added `async_update_auto_shut_off` — the documented PUT `/auto-shut-off` (media type `application/vnd.wtg.local.auto-shut-off-change.v1+json`, schema `AutoShutOffChange`) that supersedes the legacy PATCH. Client now fully covers firmware **2026.1.0**.
 - *(Add entries for each significant update)*
 
 ---

@@ -7,14 +7,14 @@ with open("version.txt", "r") as f:
     version = f.read()
 
 setup(
-    name="watergate_local_api", # Replace with your own username
+    name="watergate_local_api",
     version=version,
     author="Watergate",
     author_email="hi@watergate.ai",
     description="Python package to interact with the Watergate Local API.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/hero-laboratories/watergate-local-api-python",
+    url="https://github.com/watergate-ai/watergate-local-api-python",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
