@@ -81,21 +81,16 @@ class WatergateLocalApiClient:
             await asyncio.sleep(1)
         raise WatergateApiException(f"Failed to fetch data from {url} after 3 attempts")
 
-    async def _put(self, url: str, headers: dict, data: dict, redact_fields: Optional[set] = None) -> bool:
-        # Never log secret fields (e.g. Wi-Fi password); the real data is still sent on the wire.
-        log_data = (
-            {k: ("***" if k in redact_fields else v) for k, v in data.items()}
-            if redact_fields
-            else data
-        )
-        _LOGGER.debug("PUT %s with data: %s and headers: %s", url, log_data, headers)
+    async def _put(self, url: str, headers: dict, data: dict) -> bool:
+        # Do not log the request body: it may carry secrets (e.g. the Wi-Fi password). Log metadata only.
+        _LOGGER.debug("PUT %s with headers: %s", url, headers)
         await self._ensure_session()
         for attempt in RETRY_ATTEMPTS:  # Retry logic
             try:
                 async with self._session.put(url, json=data, headers=headers) as response:
                     if response.status == 204 or response.status == 200:
                         return True
-                _LOGGER.error("Failed to put data %s, %s, %s: %s", url, log_data, headers, response.status)
+                _LOGGER.error("Failed to put data to %s (headers: %s): %s", url, headers, response.status)
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 _LOGGER.error("Network error occurred: %s", e)
             await asyncio.sleep(1)
@@ -284,7 +279,7 @@ class WatergateLocalApiClient:
         url = self._base_url + NETWORKING_URL
         headers = {CONTENT_TYPE_HEADER: "application/vnd.wtg.local.network-change.v1+json"}
         data = {"ssid": ssid, "password": password}
-        return await self._put(url, headers, data, redact_fields={"password"})
+        return await self._put(url, headers, data)
 
     async def async_get_buzzer_status(self) -> Optional[BuzzerStatus]:
         """GET /api/sonic/buzzer - Get the current buzzer status."""

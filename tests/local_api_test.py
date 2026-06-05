@@ -558,20 +558,21 @@ async def test_update_auto_shut_off_invalid_response(client):
 
 
 @pytest.mark.asyncio
-async def test_change_network_does_not_log_password(client, caplog):
+async def test_put_does_not_log_request_body(client, caplog):
     import logging
+    # The request body is never logged - it may carry secrets (e.g. Wi-Fi password).
     with aioresponses() as mock:
         mock.put("http://testserver/api/sonic/networking", status=204)
         with caplog.at_level(logging.DEBUG, logger="watergate_local_api.watergate_api"):
             await client.async_change_network("MyWiFi", "sup3r-secret-pw")
 
-    assert "sup3r-secret-pw" not in caplog.text  # password must never be logged
-    assert "MyWiFi" in caplog.text               # non-secret body still logged
-    assert "***" in caplog.text                  # password masked
+    assert "sup3r-secret-pw" not in caplog.text   # password never logged
+    assert "MyWiFi" not in caplog.text            # body (even non-secret fields) never logged
+    assert "/api/sonic/networking" in caplog.text  # url metadata still logged
 
 
 @pytest.mark.asyncio
-async def test_change_network_redacts_password_on_failure(client, caplog):
+async def test_put_does_not_log_request_body_on_failure(client, caplog):
     import logging
     with aioresponses() as mock:
         mock.put("http://testserver/api/sonic/networking", status=400)
@@ -579,4 +580,5 @@ async def test_change_network_redacts_password_on_failure(client, caplog):
             with pytest.raises(WatergateApiException):
                 await client.async_change_network("MyWiFi", "sup3r-secret-pw")
 
-    assert "sup3r-secret-pw" not in caplog.text  # not leaked via the error log either
+    assert "sup3r-secret-pw" not in caplog.text   # not leaked via the error log either
+    assert "MyWiFi" not in caplog.text
