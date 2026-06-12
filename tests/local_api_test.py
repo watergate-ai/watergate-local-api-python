@@ -183,6 +183,16 @@ async def test_auto_shut_off_report_with_missing_fields(client):
         assert report.type == "VOLUME_THRESHOLD"
         assert report.volume is None  # Missing fields should default to None
 
+
+@pytest.mark.asyncio
+async def test_get_auto_shut_off_report_no_content_returns_none(client):
+    # 204 No Content -> None (must stay true after consolidating onto _get).
+    with aioresponses() as mock:
+        mock.get("http://testserver/api/sonic/auto-shut-off/report", status=204)
+
+        report = await client.async_get_auto_shut_off_report()
+        assert report is None
+
 @pytest.mark.asyncio
 async def test_get_device_state_v2(client):
     """Test fetching device state V2 with positive and negative water meters."""
@@ -555,6 +565,14 @@ async def test_update_auto_shut_off_invalid_response(client):
 
         with pytest.raises(WatergateApiException):
             await client.async_update_auto_shut_off(enabled=False)
+
+
+@pytest.mark.asyncio
+async def test_update_auto_shut_off_requires_at_least_one_field(client):
+    # Per the AutoShutOffChange schema (minProperties: 1) an empty update is invalid;
+    # fail fast instead of PUTting an empty body.
+    with pytest.raises(ValueError):
+        await client.async_update_auto_shut_off()
 
 
 @pytest.mark.asyncio

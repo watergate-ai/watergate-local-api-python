@@ -66,8 +66,12 @@ class WatergateLocalApiClient:
         """Exit the context and close the session if owned."""
         await self.async_close()
 
-    async def _get(self, url: str, headers: dict) -> Optional[dict]:
-        """Helper method to perform GET requests."""
+    async def _get(self, url: str, headers: dict, allow_none: bool = False) -> Optional[dict]:
+        """Helper method to perform GET requests.
+
+        When allow_none is True, a 204 No Content response returns None instead of being
+        treated as a failure.
+        """
         await self._ensure_session()
 
         for attempt in RETRY_ATTEMPTS:  # Retry logic
@@ -75,6 +79,8 @@ class WatergateLocalApiClient:
                 response = await self._session.get(url, headers=headers)
                 if response.status == 200:
                     return await response.json()
+                if allow_none and response.status == 204:
+                    return None
                 _LOGGER.error("Failed to fetch data from %s: %s", url, response.status)
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 _LOGGER.error("Network error occurred: %s", e)
@@ -206,28 +212,19 @@ class WatergateLocalApiClient:
         if volume is not None:
             data["volumeThreshold"] = volume
 
+        if not data:
+            raise ValueError(
+                "At least one of enabled, duration, or volume must be provided"
+            )
+
         return await self._put(url, headers, data)
 
     async def async_get_auto_shut_off_report(self) -> Optional[AutoShutOffReport]:
         """GET /api/sonic/auto-shut-off/report - Get auto shut-off report."""
         url = self._base_url + AUTO_SHUT_OFF_REPORT_URL
         headers = {ACCEPT_HEADER: "application/vnd.wtg.local.auto-shut-off.report.v1+json"}
-
-        await self._ensure_session()
-
-        for attempt in RETRY_ATTEMPTS:  # Retry logic
-            try:
-                response = await self._session.get(url, headers=headers)
-                if response.status == 200:
-                    data = await response.json()
-                    return AutoShutOffReport.from_dict(data) if data else None
-                if response.status == 204:
-                    return None
-                _LOGGER.error("Failed to fetch data from %s: %s", url, response.status)
-            except aiohttp.ClientError as e:
-                _LOGGER.error("Network error occurred: %s", e)
-            await asyncio.sleep(1)  # Wait before retrying
-        raise WatergateApiException(f"Failed to fetch data from {url} after 3 attempts")
+        data = await self._get(url, headers, allow_none=True)
+        return AutoShutOffReport.from_dict(data) if data else None
 
     async def async_set_webhook_url(self, webhook: str) -> bool:
         """PUT /api/sonic/webhook - Set webhook URL."""
@@ -240,22 +237,8 @@ class WatergateLocalApiClient:
         """GET /api/sonic/webhook - Get the configured webhook URL (None if unset)."""
         url = self._base_url + WEBHOOK_URL
         headers = {ACCEPT_HEADER: "application/vnd.wtg.local.webhook.v1+json"}
-
-        await self._ensure_session()
-
-        for attempt in RETRY_ATTEMPTS:  # Retry logic
-            try:
-                response = await self._session.get(url, headers=headers)
-                if response.status == 200:
-                    data = await response.json()
-                    return data.get("url") if data else None
-                if response.status == 204:
-                    return None
-                _LOGGER.error("Failed to fetch data from %s: %s", url, response.status)
-            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                _LOGGER.error("Network error occurred: %s", e)
-            await asyncio.sleep(1)
-        raise WatergateApiException(f"Failed to fetch data from {url} after 3 attempts")
+        data = await self._get(url, headers, allow_none=True)
+        return data.get("url") if data else None
 
     async def async_delete_webhook_url(self) -> bool:
         """DELETE /api/sonic/webhook - Clear the configured webhook URL."""
