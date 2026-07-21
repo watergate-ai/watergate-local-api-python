@@ -183,6 +183,16 @@ async def test_auto_shut_off_report_with_missing_fields(client):
         assert report.type == "VOLUME_THRESHOLD"
         assert report.volume is None  # Missing fields should default to None
 
+
+@pytest.mark.asyncio
+async def test_get_auto_shut_off_report_no_content_returns_none(client):
+    # 204 No Content -> None (must stay true after consolidating onto _get).
+    with aioresponses() as mock:
+        mock.get("http://testserver/api/sonic/auto-shut-off/report", status=204)
+
+        report = await client.async_get_auto_shut_off_report()
+        assert report is None
+
 @pytest.mark.asyncio
 async def test_get_device_state_v2(client):
     """Test fetching device state V2 with positive and negative water meters."""
@@ -366,3 +376,227 @@ async def test_context_manager_with_owned_session():
     # After exiting context, owned session should be closed
     assert session_ref is not None
     assert session_ref.closed
+
+
+# --- New endpoints: full 2025.2.0 firmware coverage ---
+
+@pytest.mark.asyncio
+async def test_get_valve_state(client):
+    with aioresponses() as mock:
+        mock.get("http://testserver/api/sonic/valve", payload={"state": "open"})
+
+        valve = await client.async_get_valve_state()
+        assert valve.state == "open"
+
+
+@pytest.mark.asyncio
+async def test_get_valve_state_unexpected_status(client):
+    with aioresponses() as mock:
+        mock.get("http://testserver/api/sonic/valve", status=500)
+
+        with pytest.raises(WatergateApiException):
+            await client.async_get_valve_state()
+
+
+@pytest.mark.asyncio
+async def test_get_power_supply(client):
+    with aioresponses() as mock:
+        mock.get("http://testserver/api/sonic/power", payload={
+            "battery": True,
+            "external": False,
+            "batteriesVoltage": 6800,
+        })
+
+        power = await client.async_get_power_supply_data()
+        assert power.battery is True
+        assert power.external is False
+        assert power.batteries_voltage == 6800
+
+
+@pytest.mark.asyncio
+async def test_get_webhook_url(client):
+    with aioresponses() as mock:
+        mock.get("http://testserver/api/sonic/webhook", payload={"url": "http://hook.url"})
+
+        url = await client.async_get_webhook_url()
+        assert url == "http://hook.url"
+
+
+@pytest.mark.asyncio
+async def test_get_webhook_url_not_set_returns_none(client):
+    with aioresponses() as mock:
+        mock.get("http://testserver/api/sonic/webhook", status=204)
+
+        url = await client.async_get_webhook_url()
+        assert url is None
+
+
+@pytest.mark.asyncio
+async def test_delete_webhook_url(client):
+    with aioresponses() as mock:
+        mock.delete("http://testserver/api/sonic/webhook", status=204)
+
+        result = await client.async_delete_webhook_url()
+        assert result is True
+
+
+@pytest.mark.asyncio
+async def test_delete_webhook_url_invalid_response(client):
+    with aioresponses() as mock:
+        mock.delete("http://testserver/api/sonic/webhook", status=400)
+
+        with pytest.raises(WatergateApiException):
+            await client.async_delete_webhook_url()
+
+
+@pytest.mark.asyncio
+async def test_send_command_reboot(client):
+    with aioresponses() as mock:
+        mock.put("http://testserver/api/sonic/command", status=204)
+
+        result = await client.async_send_command("reboot")
+        assert result is True
+
+
+@pytest.mark.asyncio
+async def test_reboot(client):
+    with aioresponses() as mock:
+        mock.put("http://testserver/api/sonic/command", status=204)
+
+        result = await client.async_reboot()
+        assert result is True
+
+
+@pytest.mark.asyncio
+async def test_change_network(client):
+    with aioresponses() as mock:
+        mock.put("http://testserver/api/sonic/networking", status=204)
+
+        result = await client.async_change_network("MyWiFi", "secret")
+        assert result is True
+
+
+@pytest.mark.asyncio
+async def test_get_buzzer_status(client):
+    with aioresponses() as mock:
+        mock.get("http://testserver/api/sonic/buzzer", payload={"playing": True, "sound": "beep"})
+
+        status = await client.async_get_buzzer_status()
+        assert status.playing is True
+        assert status.sound == "beep"
+
+
+@pytest.mark.asyncio
+async def test_get_buzzer_sounds(client):
+    with aioresponses() as mock:
+        mock.get("http://testserver/api/sonic/buzzer/sounds", payload={
+            "sounds": ["beep", "christmas_1", "christmas_2"]
+        })
+
+        result = await client.async_get_buzzer_sounds()
+        assert result.sounds == ["beep", "christmas_1", "christmas_2"]
+
+
+@pytest.mark.asyncio
+async def test_control_buzzer_start(client):
+    with aioresponses() as mock:
+        mock.put("http://testserver/api/sonic/buzzer", status=204)
+
+        result = await client.async_control_buzzer("start", name="beep", interval=1000, times=3)
+        assert result is True
+
+
+@pytest.mark.asyncio
+async def test_control_buzzer_stop(client):
+    with aioresponses() as mock:
+        mock.put("http://testserver/api/sonic/buzzer", status=204)
+
+        result = await client.async_control_buzzer("stop")
+        assert result is True
+
+
+@pytest.mark.asyncio
+async def test_get_device_state_v3(client):
+    with aioresponses() as mock:
+        mock.get("http://testserver/api/sonic/", payload={
+            "valveState": "closed",
+            "waterFlowing": False,
+            "mqttConnected": True,
+            "wifiConnected": True,
+            "powerSupply": "external",
+            "firmwareVersion": "2025.2.0",
+            "uptime": 1000,
+            "serialNumber": "xyz",
+            "waterMeter": {
+                "positive": {"volume": 10, "duration": 1},
+                "negative": {"volume": 0, "duration": 0},
+            },
+            "buzzerPlaying": False,
+        })
+
+        device_state = await client.async_get_device_state_v3()
+        assert device_state.buzzer_playing is False
+        assert device_state.water_meter_positive.volume == 10
+        assert device_state.serial_number == "xyz"
+
+
+@pytest.mark.asyncio
+async def test_update_auto_shut_off(client):
+    with aioresponses() as mock:
+        mock.put("http://testserver/api/sonic/auto-shut-off", status=204)
+
+        result = await client.async_update_auto_shut_off(enabled=True, duration=10, volume=5)
+        assert result is True
+
+
+@pytest.mark.asyncio
+async def test_update_auto_shut_off_partial(client):
+    with aioresponses() as mock:
+        mock.put("http://testserver/api/sonic/auto-shut-off", status=204)
+
+        result = await client.async_update_auto_shut_off(volume=100)
+        assert result is True
+
+
+@pytest.mark.asyncio
+async def test_update_auto_shut_off_invalid_response(client):
+    with aioresponses() as mock:
+        mock.put("http://testserver/api/sonic/auto-shut-off", status=400)
+
+        with pytest.raises(WatergateApiException):
+            await client.async_update_auto_shut_off(enabled=False)
+
+
+@pytest.mark.asyncio
+async def test_update_auto_shut_off_requires_at_least_one_field(client):
+    # Per the AutoShutOffChange schema (minProperties: 1) an empty update is invalid;
+    # fail fast instead of PUTting an empty body.
+    with pytest.raises(ValueError):
+        await client.async_update_auto_shut_off()
+
+
+@pytest.mark.asyncio
+async def test_put_does_not_log_request_body(client, caplog):
+    import logging
+    # The request body is never logged - it may carry secrets (e.g. Wi-Fi password).
+    with aioresponses() as mock:
+        mock.put("http://testserver/api/sonic/networking", status=204)
+        with caplog.at_level(logging.DEBUG, logger="watergate_local_api.watergate_api"):
+            await client.async_change_network("MyWiFi", "sup3r-secret-pw")
+
+    assert "sup3r-secret-pw" not in caplog.text   # password never logged
+    assert "MyWiFi" not in caplog.text            # body (even non-secret fields) never logged
+    assert "/api/sonic/networking" in caplog.text  # url metadata still logged
+
+
+@pytest.mark.asyncio
+async def test_put_does_not_log_request_body_on_failure(client, caplog):
+    import logging
+    with aioresponses() as mock:
+        mock.put("http://testserver/api/sonic/networking", status=400)
+        with caplog.at_level(logging.DEBUG, logger="watergate_local_api.watergate_api"):
+            with pytest.raises(WatergateApiException):
+                await client.async_change_network("MyWiFi", "sup3r-secret-pw")
+
+    assert "sup3r-secret-pw" not in caplog.text   # not leaked via the error log either
+    assert "MyWiFi" not in caplog.text

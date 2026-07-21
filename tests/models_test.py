@@ -1,5 +1,12 @@
 import pytest
-from watergate_local_api.models import TelemetryData, DeviceState, DeviceStateV2
+from watergate_local_api.models import (
+    TelemetryData,
+    DeviceState,
+    DeviceStateV2,
+    DeviceStateV3,
+    PowerSupply,
+    BuzzerStatus,
+)
 from watergate_local_api.models.water_meter import WaterMeter
 
 
@@ -116,3 +123,57 @@ def test_device_state_v2_with_null_water_meter():
     assert device_state.valve_state == "opening"
     assert device_state.water_meter_positive is None
     assert device_state.water_meter_negative is None
+
+
+def test_power_supply_from_dict_on_external_without_voltage():
+    """On external power the device omits batteriesVoltage -> None."""
+    power = PowerSupply.from_dict({"battery": False, "external": True})
+    assert power.battery is False
+    assert power.external is True
+    assert power.batteries_voltage is None
+
+
+def test_buzzer_status_from_dict_not_playing():
+    """When idle, sound is null."""
+    status = BuzzerStatus.from_dict({"playing": False, "sound": None})
+    assert status.playing is False
+    assert status.sound is None
+
+
+def test_device_state_v3_includes_buzzer_playing():
+    """DeviceStateV3 adds buzzerPlaying on top of the v2 fields."""
+    device_state = DeviceStateV3.from_dict({
+        "valveState": "open",
+        "waterFlowing": True,
+        "mqttConnected": True,
+        "wifiConnected": True,
+        "powerSupply": "external",
+        "firmwareVersion": "2025.2.0",
+        "uptime": 5000,
+        "serialNumber": "abc123",
+        "waterMeter": {
+            "positive": {"volume": 100, "duration": 5},
+            "negative": {"volume": 1, "duration": 0},
+        },
+        "buzzerPlaying": True,
+    })
+    assert device_state.buzzer_playing is True
+    assert device_state.water_meter_positive.volume == 100
+    assert device_state.water_meter_negative.volume == 1
+    assert device_state.serial_number == "abc123"
+
+
+def test_device_state_v3_without_buzzer_playing_defaults_none():
+    """Missing buzzerPlaying defaults to None."""
+    device_state = DeviceStateV3.from_dict({
+        "valveState": "closed",
+        "waterFlowing": False,
+        "mqttConnected": False,
+        "wifiConnected": True,
+        "powerSupply": "battery",
+        "firmwareVersion": "2025.1.0",
+        "uptime": 1234,
+        "serialNumber": "xyz789",
+    })
+    assert device_state.buzzer_playing is None
+    assert device_state.water_meter_positive is None

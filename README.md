@@ -13,10 +13,16 @@ The Watergate Local API Client simplifies interaction with the Sonic Device's lo
 
 ## Features
 
-- **Device State Management**: Access comprehensive device state details, including valve state, power supply, firmware version, and uptime.
+- **Device State Management**: Access comprehensive device state details (v1/v2/v3), including valve state, directional water meter, power supply, firmware version, uptime, and buzzer status.
 - **Telemetry Access**: Retrieve telemetry data such as flow rate, pressure, and temperature.
-- **Networking and Power Management**: Configure networking settings and monitor power supply status.
-- **Event Webhook Support**: Handle and parse webhook events including auto-shut-off, telemetry, valve state changes, power supply changes, and WiFi updates.
+- **Power Monitoring**: Read dedicated power supply status, including battery voltage.
+- **Valve Control**: Read and set the valve state.
+- **Buzzer Control**: Query buzzer status, list supported sounds, and start/stop playback.
+- **Networking**: Read networking status and update the Wi-Fi configuration.
+- **Device Commands**: Trigger a device reboot.
+- **Webhook Management**: Get, set, and delete the device webhook URL.
+- **Auto Shut-off**: Read and update auto shut-off thresholds and read the last report.
+- **Event Webhook Support**: Handle and parse webhook events including auto-shut-off, telemetry, valve state changes, power supply changes, WiFi updates, and online.
 
 ## Installation
 

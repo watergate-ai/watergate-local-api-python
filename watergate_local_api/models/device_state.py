@@ -12,6 +12,7 @@ UPTIME_FIELD = "uptime"
 WATER_METER_FIELD = "waterMeter"
 POSITIVE_FIELD = "positive"
 NEGATIVE_FIELD = "negative"
+BUZZER_PLAYING_FIELD = "buzzerPlaying"
 
 
 def _create_water_meter_from_data(data: Optional[dict]) -> Optional[WaterMeter]:
@@ -114,4 +115,55 @@ class DeviceStateV2:
             uptime=data.get(UPTIME_FIELD),
             water_meter_positive=_create_water_meter_from_data(water_meter_data.get(POSITIVE_FIELD)),
             water_meter_negative=_create_water_meter_from_data(water_meter_data.get(NEGATIVE_FIELD))
+        )
+
+
+class DeviceStateV3(DeviceStateV2):
+    """Represents the device state (API v3, adds buzzerPlaying)."""
+
+    def __init__(
+        self,
+        valve_state: str,
+        water_flow_indicator: bool,
+        mqtt_status: bool,
+        wifi_status: bool,
+        power_supply: str,
+        firmware_version: str,
+        uptime: int,
+        water_meter_positive: Optional[WaterMeter],
+        water_meter_negative: Optional[WaterMeter],
+        serial_number: str,
+        buzzer_playing: Optional[bool] = None,
+    ) -> None:
+        """Create a Device State V3 object."""
+        super().__init__(
+            valve_state,
+            water_flow_indicator,
+            mqtt_status,
+            wifi_status,
+            power_supply,
+            firmware_version,
+            uptime,
+            water_meter_positive,
+            water_meter_negative,
+            serial_number,
+        )
+        self.buzzer_playing = buzzer_playing
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        """Create a Device State V3 object from a dictionary."""
+        water_meter_data = data.get(WATER_METER_FIELD) or {}
+        return cls(
+            valve_state=data.get(VALVE_STATE_FIELD),
+            water_flow_indicator=data.get(WATER_FLOW_INDICATOR_FIELD),
+            mqtt_status=data.get(MQTT_STATUS_FIELD),
+            wifi_status=data.get(WIFI_STATUS_FIELD),
+            power_supply=data.get(POWER_SUPPLY_FIELD),
+            firmware_version=data.get(FIRMWARE_VERSION_FIELD),
+            serial_number=data.get(SERIAL_NUMBER_FIELD),
+            uptime=data.get(UPTIME_FIELD),
+            water_meter_positive=_create_water_meter_from_data(water_meter_data.get(POSITIVE_FIELD)),
+            water_meter_negative=_create_water_meter_from_data(water_meter_data.get(NEGATIVE_FIELD)),
+            buzzer_playing=data.get(BUZZER_PLAYING_FIELD),
         )
