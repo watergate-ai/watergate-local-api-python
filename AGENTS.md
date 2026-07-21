@@ -187,6 +187,19 @@ raise WatergateApiException(f"Failed after 3 attempts")
 
 **Why**: Devices may be on unreliable networks (WiFi), experience temporary issues, or be under load.
 
+**Non-idempotent mutations** (`_put(..., idempotent=False)`, used by `async_send_command`/`async_reboot`
+and `async_change_network`): the client performs **no explicit retries** and signals the outcome precisely:
+- `2xx` → success; `4xx` → `WatergateApiException` (rejected, not applied); `5xx` → `WatergateIndeterminateError` (may have applied then errored);
+- lost response / server disconnect (ambiguous) → `WatergateIndeterminateError` (not resent);
+- connection-establishment failure — `ClientConnectorError`/`ConnectionTimeoutError`, never sent → retried, then a definite `WatergateApiException`.
+
+`WatergateIndeterminateError` subclasses `WatergateApiException` (back-compat for callers catching the base).
+
+> **Known limitation:** PUT is idempotent per HTTP (RFC 9110), so the underlying `aiohttp` session may
+> itself transparently resend the request once on a dropped connection. This is not disabled here because
+> it cannot be controlled on an injected (Home Assistant) session, and it is low-harm — `reboot` and
+> `network-change` converge to the same state. Idempotent reads/writes keep the 3× retry.
+
 ### 4. Content-Type Versioning
 **API uses versioned media types for forward/backward compatibility**.
 
@@ -739,6 +752,7 @@ Every model must test:
 - **2024.4.1**: Initial comprehensive documentation
 - **2025.2.0**: Full 2025.2.0 firmware coverage. Added GET `/valve`, GET `/power`, GET/PUT `/buzzer`, GET `/buzzer/sounds`, PUT `/networking`, PUT `/command` (reboot), GET/DELETE `/webhook`, and `async_get_device_state_v3` (`DeviceStateV3` with `buzzerPlaying`). Added the `_delete()` helper. New models: `ValveState`, `PowerSupply`, `BuzzerStatus`, `BuzzerSounds`, `DeviceStateV3`. Corrected `async_set_webhook_url` docstring (PUT, not PATCH).
 - **2026.1.0**: Added `async_update_auto_shut_off` — the documented PUT `/auto-shut-off` (media type `application/vnd.wtg.local.auto-shut-off-change.v1+json`, schema `AutoShutOffChange`) that supersedes the legacy PATCH. Client now fully covers firmware **2026.1.0**.
+- **Unreleased**: Non-idempotent mutations (`async_reboot`/`async_send_command`, `async_change_network`) are no longer blindly retried; on a lost response they raise the new `WatergateIndeterminateError` (subclass of `WatergateApiException`) instead of resending. Addresses the at-least-once ambiguity (issue #3).
 - *(Add entries for each significant update)*
 
 ---

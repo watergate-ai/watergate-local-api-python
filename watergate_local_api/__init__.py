@@ -1,2 +1,3 @@
 from .watergate_api import WatergateLocalApiClient
 from .watergate_api import WatergateApiException
+from .watergate_api import WatergateIndeterminateError

@@ -37,8 +37,23 @@ BUZZER_SOUNDS_URL = "/buzzer/sounds"
 
 RETRY_ATTEMPTS = range(3)
 
+# Connection-establishment failures mean the request was never sent, so it is safe to retry
+# even for a non-idempotent mutation. A failure after the connection is established (lost
+# response, read timeout, server disconnect) is ambiguous and must not be resent.
+_NEVER_SENT_ERRORS = (aiohttp.ClientConnectorError, aiohttp.ConnectionTimeoutError)
+
 class WatergateApiException(Exception):
     """Custom exception for critical errors in WatergateLocalApiClient."""
+    pass
+
+class WatergateIndeterminateError(WatergateApiException):
+    """A non-idempotent request was sent but its outcome is unknown.
+
+    Raised when a non-idempotent mutation (e.g. reboot, network change) is dispatched but no
+    response is received (timeout / connection error). The device may or may not have applied
+    the change, so the client does not retry. Subclasses WatergateApiException for backward
+    compatibility with callers that catch the base exception.
+    """
     pass
 
 class WatergateLocalApiClient:
@@ -87,7 +102,7 @@ class WatergateLocalApiClient:
             await asyncio.sleep(1)
         raise WatergateApiException(f"Failed to fetch data from {url} after 3 attempts")
 
-    async def _put(self, url: str, headers: dict, data: dict) -> bool:
+    async def _put(self, url: str, headers: dict, data: dict, idempotent: bool = True) -> bool:
         # Do not log the request body: it may carry secrets (e.g. the Wi-Fi password). Log metadata only.
         _LOGGER.debug("PUT %s with headers: %s", url, headers)
         await self._ensure_session()
@@ -96,9 +111,26 @@ class WatergateLocalApiClient:
                 async with self._session.put(url, json=data, headers=headers) as response:
                     if response.status == 204 or response.status == 200:
                         return True
-                _LOGGER.error("Failed to put data to %s (headers: %s): %s", url, headers, response.status)
+                    _LOGGER.error("Failed to put data to %s (headers: %s): %s", url, headers, response.status)
+                    if not idempotent:
+                        if 400 <= response.status < 500:
+                            # Client error: the device rejected the request; it was not applied.
+                            raise WatergateApiException(
+                                f"Failed to put data to {url}: {response.status}"
+                            )
+                        # 5xx: the device may have applied the change before erroring -> ambiguous.
+                        raise WatergateIndeterminateError(
+                            f"PUT {url} returned {response.status}; outcome is unknown"
+                        )
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 _LOGGER.error("Network error occurred: %s", e)
+                if not idempotent and not isinstance(e, _NEVER_SENT_ERRORS):
+                    # A connection was established, so the request may have been sent but the
+                    # response was lost -> ambiguous. Do not resend a non-idempotent mutation.
+                    raise WatergateIndeterminateError(
+                        f"PUT {url} was sent but the outcome is unknown; not retried"
+                    ) from e
+                # Idempotent op, or a connection-establishment failure (never sent) -> retry.
             await asyncio.sleep(1)
         raise WatergateApiException(f"Failed to put data to {url} after 3 attempts")
 
@@ -251,7 +283,8 @@ class WatergateLocalApiClient:
         url = self._base_url + COMMAND_URL
         headers = {CONTENT_TYPE_HEADER: "application/vnd.wtg.local.command.v1+json"}
         data = {"type": command_type}
-        return await self._put(url, headers, data)
+        # Commands (e.g. reboot) are non-idempotent: never resend after an ambiguous timeout.
+        return await self._put(url, headers, data, idempotent=False)
 
     async def async_reboot(self) -> bool:
         """PUT /api/sonic/command - Convenience wrapper to reboot the device."""
@@ -262,7 +295,8 @@ class WatergateLocalApiClient:
         url = self._base_url + NETWORKING_URL
         headers = {CONTENT_TYPE_HEADER: "application/vnd.wtg.local.network-change.v1+json"}
         data = {"ssid": ssid, "password": password}
-        return await self._put(url, headers, data)
+        # Wi-Fi reconfiguration is non-idempotent from the client's view: never resend blindly.
+        return await self._put(url, headers, data, idempotent=False)
 
     async def async_get_buzzer_status(self) -> Optional[BuzzerStatus]:
         """GET /api/sonic/buzzer - Get the current buzzer status."""
