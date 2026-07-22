@@ -94,9 +94,16 @@ jobs:
 
     needs: deploy
 
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
+        with:
+          # Bot PAT that is on the `main` ruleset bypass list, so the version-bump commit
+          # can be pushed directly (the default GITHUB_TOKEN is rejected by "require a PR").
+          token: ${{ secrets.HL_GITHUB_TOKEN }}
 
       - name: Increment Version
         id: increment_version
