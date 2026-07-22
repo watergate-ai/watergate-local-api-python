@@ -94,9 +94,16 @@ jobs:
 
     needs: deploy
 
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
+        with:
+          # Bot PAT that is on the `main` ruleset bypass list, so the version-bump commit
+          # can be pushed directly (the default GITHUB_TOKEN is rejected by "require a PR").
+          token: ${{ secrets.HL_GITHUB_TOKEN }}
 
       - name: Increment Version
         id: increment_version
@@ -125,11 +132,14 @@ jobs:
           echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
 
       - name: Commit and Push Incremented Version
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
+          # Auth for this push comes from HL_GITHUB_TOKEN, which the checkout step above
+          # persisted as an http.extraheader credential. git push uses that credential; it does
+          # NOT read a GITHUB_TOKEN env var, so no token is set here (matching redo-docs).
+          # The committer is the same bot that authenticates the push, so the commit is attributed
+          # correctly (not a fabricated "GitHub Actions" / actions@github.com identity).
+          git config --global user.name "hero-laboratories-bot"
+          git config --global user.email "admin@hero-labs.com"
           git add version.txt
           git commit -m "Increment version to ${{ env.new_version }}"
           git push origin main

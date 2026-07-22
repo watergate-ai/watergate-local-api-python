@@ -476,6 +476,96 @@ async def test_change_network(client):
         assert result is True
 
 
+def _put_call_count(mock):
+    return sum(len(v) for k, v in mock.requests.items() if k[0] == "PUT")
+
+
+def _connect_error():
+    # A demonstrably pre-dispatch failure: the request was never sent.
+    from aiohttp.client_reqrep import ConnectionKey
+    key = ConnectionKey("testserver", 80, False, None, None, None, None)
+    return aiohttp.ClientConnectorError(key, OSError(61, "Connection refused"))
+
+
+@pytest.mark.asyncio
+async def test_reboot_lost_response_is_indeterminate_and_not_retried(client):
+    from watergate_local_api import WatergateIndeterminateError
+    with aioresponses() as mock:
+        # Response lost after dispatch (timeout): the device may have rebooted -> ambiguous.
+        mock.put("http://testserver/api/sonic/command", exception=TimeoutError(), repeat=True)
+
+        with pytest.raises(WatergateIndeterminateError):
+            await client.async_reboot()
+
+        assert _put_call_count(mock) <= 1  # non-idempotent: must not be resent
+
+
+@pytest.mark.asyncio
+async def test_change_network_lost_response_is_indeterminate_and_not_retried(client):
+    from watergate_local_api import WatergateIndeterminateError
+    with aioresponses() as mock:
+        mock.put("http://testserver/api/sonic/networking", exception=TimeoutError(), repeat=True)
+
+        with pytest.raises(WatergateIndeterminateError):
+            await client.async_change_network("MyWiFi", "secret")
+
+        assert _put_call_count(mock) <= 1
+
+
+@pytest.mark.asyncio
+async def test_reboot_rejected_4xx_is_definite_failure_not_retried(client):
+    from watergate_local_api import WatergateApiException, WatergateIndeterminateError
+    with aioresponses() as mock:
+        # 4xx = the device rejected the request; it was not applied -> definite failure.
+        mock.put("http://testserver/api/sonic/command", status=400, repeat=True)
+
+        with pytest.raises(WatergateApiException) as exc:
+            await client.async_reboot()
+
+        assert not isinstance(exc.value, WatergateIndeterminateError)
+        assert _put_call_count(mock) <= 1
+
+
+@pytest.mark.asyncio
+async def test_reboot_5xx_is_indeterminate_not_retried(client):
+    from watergate_local_api import WatergateIndeterminateError
+    with aioresponses() as mock:
+        # 5xx may occur after the device applied the change -> ambiguous, not a definite failure.
+        mock.put("http://testserver/api/sonic/command", status=500, repeat=True)
+
+        with pytest.raises(WatergateIndeterminateError):
+            await client.async_reboot()
+
+        assert _put_call_count(mock) <= 1
+
+
+@pytest.mark.asyncio
+async def test_reboot_pre_dispatch_connect_error_is_retried(client):
+    from watergate_local_api import WatergateApiException, WatergateIndeterminateError
+    with aioresponses() as mock:
+        # Could not connect: the request was never sent -> safe to retry, and a definite failure.
+        mock.put("http://testserver/api/sonic/command", exception=_connect_error(), repeat=True)
+
+        with pytest.raises(WatergateApiException) as exc:
+            await client.async_reboot()
+
+        assert not isinstance(exc.value, WatergateIndeterminateError)  # never sent -> not indeterminate
+
+
+@pytest.mark.asyncio
+async def test_reboot_connect_timeout_is_retried(client):
+    from watergate_local_api import WatergateApiException, WatergateIndeterminateError
+    with aioresponses() as mock:
+        # Connection establishment timed out: the request was never sent -> safe to retry.
+        mock.put("http://testserver/api/sonic/command",
+                 exception=aiohttp.ConnectionTimeoutError("connect timed out"), repeat=True)
+
+        with pytest.raises(WatergateApiException) as exc:
+            await client.async_reboot()
+
+        assert not isinstance(exc.value, WatergateIndeterminateError)  # never established -> not indeterminate
+
+
 @pytest.mark.asyncio
 async def test_get_buzzer_status(client):
     with aioresponses() as mock:
