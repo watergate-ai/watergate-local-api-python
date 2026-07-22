@@ -77,6 +77,10 @@ event = WebhookEvent.parse_webhook_event(webhook_payload)
 print("Parsed Event:", event)
 ```
 
+## Versioning & releases
+
+The package version is derived from the latest **git tag** via [`setuptools-scm`](https://github.com/pypa/setuptools_scm) — there is no version file to edit. To cut a release, publish a **GitHub Release** whose tag is the target Sonic firmware version (e.g. `2026.2.0`); the `release` workflow builds the distribution and uploads it to PyPI using **OIDC trusted publishing** (no API token, no push back to `main`).
+
 ## Development
 
 To contribute to this project, follow these steps:
