@@ -136,8 +136,10 @@ jobs:
           # Auth for this push comes from HL_GITHUB_TOKEN, which the checkout step above
           # persisted as an http.extraheader credential. git push uses that credential; it does
           # NOT read a GITHUB_TOKEN env var, so no token is set here (matching redo-docs).
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
+          # The committer is the same bot that authenticates the push, so the commit is attributed
+          # correctly (not a fabricated "GitHub Actions" / actions@github.com identity).
+          git config --global user.name "hero-laboratories-bot"
+          git config --global user.email "admin@hero-labs.com"
           git add version.txt
           git commit -m "Increment version to ${{ env.new_version }}"
           git push origin main
