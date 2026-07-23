@@ -110,6 +110,9 @@ ENV/
 env.bak/
 venv.bak/
 
+# setuptools-scm generated version file (derived from git tag at build time)
+watergate_local_api/_version.py
+
 # Spyder project settings
 .spyderproject
 .spyproject

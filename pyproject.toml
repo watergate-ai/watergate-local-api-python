@@ -1,0 +1,9 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+# The version is derived from the latest git tag (tag "2026.2.0" -> version 2026.2.0).
+# Between tags a dev version like 2026.2.1.devN+g<sha> is produced. It is written to a
+# generated, gitignored module so the version is importable even without git (e.g. from an sdist).
+version_file = "watergate_local_api/_version.py"
