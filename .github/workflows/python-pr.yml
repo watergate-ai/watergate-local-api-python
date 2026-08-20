@@ -53,6 +53,10 @@ jobs:
       # into a failure instead.
       - name: OSV vulnerability scan
         run: |
+          # GitHub runs `run:` blocks as `bash -e`, which would abort on the
+          # scanner's non-zero exit before the findings are printed. Disable
+          # errexit so the vulnerability table is always shown in the log.
+          set +e
           set -uo pipefail
           out=$(docker run --rm -v "$PWD":/src:ro \
             ghcr.io/google/osv-scanner-action:v2.5.1 \
