@@ -42,13 +42,25 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      # Scans dependencies for known vulnerabilities. Non-blocking for now:
-      # as of 2026-08-20 this repo has 36 known vulnerabilities across 4
-      # packages, so gating on it would block every PR. Remove
-      # continue-on-error once the backlog is cleared.
+      # Scans dependencies for known vulnerabilities. Blocking: the build fails
+      # if any known vulnerability is present.
+      #
+      # Run via the container directly rather than the action so we can assert
+      # that dependency resolution actually happened. requirements.txt needs a network
+      # round-trip to resolve transitive versions, and if that is rate-limited
+      # the scanner FALLS BACK TO OFFLINE EXTRACTION and reports "No issues
+      # found" with exit 0 - a silently green gate. The grep below turns that
+      # into a failure instead.
       - name: OSV vulnerability scan
-        uses: google/osv-scanner-action/osv-scanner-action@6e4298ebc4db23e847df9b2e2de2939d6f066c67 # v2.5.1
-        with:
-          scan-args: |-
-            --lockfile=./requirements.txt
-        continue-on-error: true
+        run: |
+          set -uo pipefail
+          out=$(docker run --rm -v "$PWD":/src:ro \
+            ghcr.io/google/osv-scanner-action:v2.5.1 \
+            --lockfile=/src/requirements.txt 2>&1); rc=$?
+          echo "$out"
+          if echo "$out" | grep -q "falling back to offline extraction"; then
+            echo "::error::Dependency resolution failed - the scan could not see"
+            echo "::error::transitive dependencies, so this result is not trustworthy."
+            exit 1
+          fi
+          exit $rc
