@@ -9,7 +9,7 @@ git tag + push  ->  test (py3.13, 3.14)  ->  build (isolated, twine check)  ->  
 - **Version** = the tag, via `setuptools-scm` (no version file). CalVer `YYYY.N.P`: `N` counts releases of the year, `P` hotfixes. Existing tags are unprefixed (`2026.2.2`); a `v` prefix also works (`v2026.3.0` builds `2026.3.0`) but stay unprefixed for consistency.
 - **Trigger** = a tag push, not "publish a Release". One deliberate action, protected by tag rules; the GitHub Release is *created by* the pipeline from the exact artifacts that were uploaded, so a Release can never exist without a published package.
 - **Pre-release tags** (`2026.3.0rc1`, `a`, `b`, `.dev`) go to **TestPyPI only** and never to PyPI. They dry-run the whole pipeline.
-- Workflows: `.github/workflows/release.yml` (pipeline), `test.yml` (tests, shared with PR CI).
+- Workflows: `.github/workflows/release.yml` (pipeline), `test.yml` (mypy --strict + tests, shared with PR CI).
 
 ## ONE-TIME SETUP (repository admin)
 
@@ -25,7 +25,7 @@ Do these in order before the first release with this flow. Nothing here needs a 
 
 ## Pre-flight (every release)
 
-1. `main` is green (PR CI: tests + OSV scan) and contains everything you want to ship.
+1. `main` is green (PR CI: mypy + tests + OSV scan) and contains everything you want to ship.
 2. Decide the version: next number after the latest tag of the year (`git fetch --tags && git tag --sort=-v:refname | head -3`). `2026.3.0` for a new release, `2026.3.1` for a hotfix of it.
 3. Optional local check: `python -m venv .venv && . .venv/bin/activate && pip install build twine && python -m build && twine check --strict dist/*`.
 

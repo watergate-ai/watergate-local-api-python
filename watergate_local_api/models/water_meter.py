@@ -1,3 +1,5 @@
+from typing import Any, Mapping
+from ._util import field
 from typing import Optional
 
 VOLUME_FIELD = "volume"
@@ -13,9 +15,9 @@ class WaterMeter:
         self.duration = duration
         
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "WaterMeter":
         """Create a WaterMeter object from a dictionary."""
         return cls(
-            volume=data.get(VOLUME_FIELD),
-            duration=data.get(DURATION_FIELD)
+            volume=field(data, VOLUME_FIELD),
+            duration=field(data, DURATION_FIELD)
         )

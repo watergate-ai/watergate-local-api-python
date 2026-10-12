@@ -1,3 +1,5 @@
+from typing import Any, Mapping
+from ._util import field
 from .water_event import Event
 
 FLOW_FIELD = "flow"
@@ -25,12 +27,12 @@ class TelemetryData:
         self.errors = errors
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "TelemetryData":
         """Create an Telemetry Data object from a dictionary."""
         return cls(
-            flow=data.get(FLOW_FIELD),
-            pressure=data.get(PRESSURE_FIELD),
-            water_temperature=data.get(TEMPERATURE_FIELD),
-            ongoing_event=Event(**data.get(EVENT_FIELD)) if data.get(EVENT_FIELD) else None,
-            errors=data.get(ERRORS_FIELD)
+            flow=field(data, FLOW_FIELD),
+            pressure=field(data, PRESSURE_FIELD),
+            water_temperature=field(data, TEMPERATURE_FIELD),
+            ongoing_event=Event(**field(data, EVENT_FIELD)) if field(data, EVENT_FIELD) else None,
+            errors=field(data, ERRORS_FIELD)
         )

@@ -14,6 +14,8 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/watergate-ai/watergate-local-api-python",
     packages=find_packages(),
+    # PEP 561: ship the typing marker so consumers (e.g. Home Assistant strict-typing) use our annotations.
+    package_data={"watergate_local_api": ["py.typed"]},
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",

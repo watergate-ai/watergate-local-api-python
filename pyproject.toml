@@ -7,3 +7,8 @@ build-backend = "setuptools.build_meta"
 # Between tags a dev version like 2026.2.1.devN+g<sha> is produced. It is written to a
 # generated, gitignored module so the version is importable even without git (e.g. from an sdist).
 version_file = "watergate_local_api/_version.py"
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+files = ["watergate_local_api"]
