@@ -1,4 +1,4 @@
-name: Release
+name: Publish to PyPI
 
 # Publish to PyPI when a GitHub Release is published. The released version is the
 # release's tag name (via setuptools-scm) - there is no version file to bump.
