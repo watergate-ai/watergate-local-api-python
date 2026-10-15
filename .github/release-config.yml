@@ -1,0 +1,11 @@
+schema: 1
+service: watergate-local-api-python
+default-branch: main
+version:
+  source: tag
+deploy:
+  target: none
+release:
+  library: true
+tests:
+  results-artifact-pattern: 'release-test-results-*'
