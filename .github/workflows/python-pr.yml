@@ -6,32 +6,10 @@ on:
       - main
 
 jobs:
+  # The tests live in test.yml, which the shared Release workflow also runs. The check
+  # appears as "test / test" (it was "test").
   test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout source code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.13'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run Tests
-        run: |
-          python -m pip install pytest
-          pytest
-
-      - name: Report Test Results
-        if: failure()
-        run: |
-          echo "::error::Some tests failed. Check the logs for details."
+    uses: ./.github/workflows/test.yml
 
   # Dependency scan in its own job: credential-free checkout and a
   # contents:read token, so the third-party container action never sees the
