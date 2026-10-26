@@ -21,7 +21,7 @@ Do these in order before the first release with this flow. Nothing here needs a 
 - [ ] **GitHub -> Settings -> Environments -> New environment `testpypi`**: no reviewers needed; same tag restriction. Add no secrets.
 - [ ] **GitHub -> Settings -> Rules -> Rulesets -> New tag ruleset**: target tags `*.*.*` (and `v*.*.*`); rules *Restrict creations*, *Restrict updates*, *Restrict deletions*; bypass only the maintainers who may release.
 - [ ] **GitHub -> Settings -> Actions -> General**: *Workflow permissions* = read-only (the workflows declare their own), allow GitHub-authored and `pypa/*` actions (they are pinned by SHA).
-- [ ] Merge the release-flow PR. Close PR #7 and remove the `RELEASE_BOT_*` variable/secret and the `release-bot` App installation from this repository if they were added.
+- [ ] Merge the release-flow PR. Close PR #7 and remove any variables/secrets/App installations that were added for it.
 
 ## Pre-flight (every release)
 
