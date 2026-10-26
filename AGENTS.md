@@ -752,7 +752,7 @@ Every model must test:
 - **2024.4.1**: Initial comprehensive documentation
 - **2025.2.0**: Full 2025.2.0 firmware coverage. Added GET `/valve`, GET `/power`, GET/PUT `/buzzer`, GET `/buzzer/sounds`, PUT `/networking`, PUT `/command` (reboot), GET/DELETE `/webhook`, and `async_get_device_state_v3` (`DeviceStateV3` with `buzzerPlaying`). Added the `_delete()` helper. New models: `ValveState`, `PowerSupply`, `BuzzerStatus`, `BuzzerSounds`, `DeviceStateV3`. Corrected `async_set_webhook_url` docstring (PUT, not PATCH).
 - **2026.1.0**: Added `async_update_auto_shut_off` — the documented PUT `/auto-shut-off` (media type `application/vnd.wtg.local.auto-shut-off-change.v1+json`, schema `AutoShutOffChange`) that supersedes the legacy PATCH. Client now fully covers firmware **2026.1.0**.
-- **Release tooling**: Version is now derived from the **git tag** via `setuptools-scm` (no `version.txt`). To release, publish a **GitHub Release** with the version tag (e.g. `2026.2.0`); `.github/workflows/release.yml` builds and uploads to PyPI via **OIDC trusted publishing** (no API token). No commit is pushed back to `main`, so branch protection is untouched.
+- **Release tooling**: Version is derived from the **git tag** via `setuptools-scm` (no `version.txt`). To release, push a version tag (`YYYY.N.P`, optional `v` prefix) from `main`; `.github/workflows/release.yml` runs tests, builds in isolation, publishes to PyPI via **OIDC Trusted Publishing** (no API token; `pypi` environment approval) and creates the GitHub Release. See `RELEASING.md` and "Release process" below.
 - **Unreleased**: Non-idempotent mutations (`async_reboot`/`async_send_command`, `async_change_network`) are no longer blindly retried; on a lost response they raise the new `WatergateIndeterminateError` (subclass of `WatergateApiException`) instead of resending. Addresses the at-least-once ambiguity (issue #3).
 - *(Add entries for each significant update)*
 
@@ -793,8 +793,17 @@ pytest tests/local_api_test.py
 pytest --cov=watergate_local_api
 
 # Build package (version is derived from the git tag by setuptools-scm)
-python -m build
+python -m build && twine check --strict dist/*
 ```
+
+### Release process
+
+- **Version**: CalVer `YYYY.N.P`, derived from the git tag by `setuptools-scm`; never edit a version in code. Tags may carry a `v` prefix (`v2026.3.0` and `2026.3.0` both build `2026.3.0`); existing history is unprefixed, so prefer unprefixed.
+- **Trigger**: pushing a version tag on a commit that is on `main`. Pipeline (`.github/workflows/release.yml`): `test` (`test.yml`, shared with PR CI) -> `build` (`python -m build`, `twine check --strict`, no secrets) -> `publish-pypi` (environment `pypi`, Trusted Publishing) -> `github-release`. A pre-release tag (`2026.3.0rc1`) is published to TestPyPI only (environment `testpypi`) and is the way to dry-run the pipeline.
+- **No secrets**: there is no PyPI token and no GitHub App; the workflow uses OIDC and the default `GITHUB_TOKEN`. Third-party actions are pinned by commit SHA (Dependabot keeps them current).
+- **You may**: change workflows via pull request; run `python -m build` / `twine check --strict` locally.
+- **You must not**: create, move or delete tags or GitHub Releases, publish to PyPI by hand, change GitHub Environments / PyPI publisher settings, or add a PyPI token. A bad release is rolled back by yanking on PyPI, never by deleting.
+- Human steps (tagging, approving the `pypi` environment, one-time admin setup) are in `RELEASING.md`.
 
 ### Common Import Patterns
 ```python

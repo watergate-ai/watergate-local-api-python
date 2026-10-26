@@ -79,7 +79,7 @@ print("Parsed Event:", event)
 
 ## Versioning & releases
 
-The package version is derived from the latest **git tag** via [`setuptools-scm`](https://github.com/pypa/setuptools_scm) — there is no version file to edit. To cut a release, publish a **GitHub Release** whose tag is the target Sonic firmware version (e.g. `2026.2.0`); the `release` workflow builds the distribution and uploads it to PyPI using **OIDC trusted publishing** (no API token, no push back to `main`).
+The package version is derived from the latest **git tag** via [`setuptools-scm`](https://github.com/pypa/setuptools_scm) — there is no version file to edit. A release is a pushed version tag (e.g. `2026.3.0`); the `release` workflow tests, builds and uploads to PyPI using **OIDC Trusted Publishing** (no API token), then creates the GitHub Release. See [`RELEASING.md`](RELEASING.md).
 
 ## Development
 
