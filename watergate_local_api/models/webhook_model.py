@@ -24,7 +24,7 @@ ERRORS_FIELD = "errors"
 class AutoShutOffReportData:
     """Represents data for the auto-shut-off report webhook event."""
     
-    def __init__(self, event_type: str, volume: int, duration: int, timestamp: int):
+    def __init__(self, event_type: str, volume: int, duration: int, timestamp: int) -> None:
         """
         Initialize the AutoShutOffReportData object.
         
@@ -59,7 +59,7 @@ class TelemetryEventData:
         temperature: Optional[float] = None,
         event: Optional[Dict[str, int]] = None,
         errors: Optional[List[str]] = None,
-    ):
+    ) -> None:
         """
         Initialize the TelemetryEventData object.
         
@@ -90,7 +90,7 @@ class TelemetryEventData:
 class ValveEventData:
     """Represents data for the valve state change webhook event."""
     
-    def __init__(self, state: str):
+    def __init__(self, state: str) -> None:
         """
         Initialize the ValveEventData object.
         
@@ -109,7 +109,7 @@ class ValveEventData:
 class PowerSupplyChangedEventData:
     """Represents data for the power supply change webhook event."""
     
-    def __init__(self, supply: str):
+    def __init__(self, supply: str) -> None:
         """
         Initialize the PowerSupplyChangedEventData object.
         
@@ -128,7 +128,7 @@ class PowerSupplyChangedEventData:
 class WifiChangedEventData:
     """Represents data for the WiFi configuration change webhook event."""
     
-    def __init__(self, ip: str, gateway: str, subnet: str, ssid: str, rssi: int):
+    def __init__(self, ip: str, gateway: str, subnet: str, ssid: str, rssi: int) -> None:
         """
         Initialize the WifiChangedEventData object.
         
