@@ -77,6 +77,7 @@ A **Python async HTTP client library** for communicating with Watergate/Sonic wa
 | Testing | pytest | 8.4.2 | Test framework |
 | Async Testing | pytest-asyncio | 1.2.0 | Async test support |
 | HTTP Mocking | aioresponses | 0.7.8 | HTTP response mocking |
+| Type Checking | mypy | Latest | `strict = true` (see [Typing Standards](#typing-standards)) |
 | Package Build | setuptools | Latest | Distribution packaging |
 
 ### 🚨 CRITICAL: Virtual Environment Requirements
@@ -139,12 +140,13 @@ def get_device_state(self) -> Optional[DeviceState]:
 
 ```python
 # Session creation is lazy
-async def _ensure_session(self):
-    if self._session is None or self._session.closed:
+async def _ensure_session(self) -> aiohttp.ClientSession:
+    if self._session_owner and (self._session is None or self._session.closed):
         self._session = aiohttp.ClientSession(
             timeout=self._timeout,
             json_serialize=lambda data: json.dumps(data, separators=(',', ':'))
         )
+    return self._session  # callers use the returned session, not self._session
 ```
 
 **Critical Rules**:
@@ -167,14 +169,14 @@ finally:
 ```
 
 ### 3. Resilient Retry Logic
-**All network operations retry up to 3 times with exponential backoff**.
+**All network operations retry up to 3 times with a fixed 1 s delay between attempts** (no backoff).
 
 ```python
 RETRY_ATTEMPTS = range(3)  # Module-level constant
 
 for attempt in RETRY_ATTEMPTS:
     try:
-        response = await self._session.get(url, headers=headers)
+        response = await session.get(url, headers=headers)  # session = await self._ensure_session()
         if response.status == 200:
             return await response.json()
         _LOGGER.error("Failed to fetch: %s", response.status)
@@ -232,17 +234,17 @@ class DeviceState:
         self.uptime = uptime
     
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "DeviceState":
         """Safe deserialization with None defaults"""
         return cls(
-            valve_state=data.get(VALVE_STATE_FIELD),
-            uptime=data.get(UPTIME_FIELD)
+            valve_state=field(data, VALVE_STATE_FIELD),
+            uptime=field(data, UPTIME_FIELD)
         )
 ```
 
 **Key Points**:
 - Field constants prevent typos and enable IDE autocomplete
-- `.get()` method returns None for missing fields (graceful degradation)
+- `field(data, KEY)` (`models/_util.py`, a typed `data.get(KEY)`) returns None for missing fields (graceful degradation)
 - No `to_dict()` method - deserialization only (data flows one way)
 - Nested objects conditionally instantiated
 
@@ -362,12 +364,12 @@ class NewModel:
         self.nested_object = nested_object
     
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "NewModel":
         """Create a NewModel from dictionary."""
         return cls(
-            field_one=data.get(FIELD_ONE),
-            field_two=data.get(FIELD_TWO),
-            nested_object=NestedModel(**data.get(NESTED_FIELD)) if data.get(NESTED_FIELD) else None
+            field_one=field(data, FIELD_ONE),
+            field_two=field(data, FIELD_TWO),
+            nested_object=NestedModel(**field(data, NESTED_FIELD)) if field(data, NESTED_FIELD) else None
         )
 ```
 
@@ -378,8 +380,9 @@ class NewModel:
 - [ ] Type hint all parameters
 - [ ] Implement `from_dict` classmethod
 - [ ] Handle nested objects conditionally
-- [ ] Use `.get()` for safe access
-- [ ] Export in `models/__init__.py`
+- [ ] Use `field(data, KEY)` for safe access
+- [ ] Export in `models/__init__.py` **and add it to `__all__`** (strict mypy rejects implicit re-exports)
+- [ ] `mypy` (strict) is clean
 - [ ] Add tests for deserialization
 - [ ] Test with missing fields
 
@@ -397,12 +400,12 @@ class NewEventData:
         self.field = field
     
     @classmethod
-    def from_dict(cls, data: dict):
-        return cls(field=data.get(FIELD_CONSTANT))
+    def from_dict(cls, data: Mapping[str, Any]) -> "NewEventData":
+        return cls(field=field(data, FIELD_CONSTANT))
 
 # 2. Update parse_webhook_event method
 @classmethod
-def parse_webhook_event(cls, data: dict) -> Union[...]:
+def parse_webhook_event(cls, data: Mapping[str, Any]) -> Union[...]:
     event_type = data.get("type")
     event_data = data.get("data", {})
     
@@ -482,7 +485,10 @@ async def test_operation_missing_fields(client):
 
 ### Endpoint Inventory
 
-Full coverage of the Sonic Local API **2026.1.0** spec.
+Client covers firmware API **2026.1.0**. The `reference/local.openapi.yaml` in the project-ha workspace is
+version **2025.2.0** and does not yet document `PUT`/`PATCH /auto-shut-off` (GAPS F1) — so those two rows are
+code-verified only, not spec-verified. Last code↔doc parity check against `watergate_api.py`: all 18 rows below
+match the public methods; every other row matches the 2025.2.0 spec.
 
 | Method | Endpoint | Purpose | Response Status | Model |
 |--------|----------|---------|----------------|-------|
@@ -497,8 +503,8 @@ Full coverage of the Sonic Local API **2026.1.0** spec.
 | GET | `/networking` | Get network info | 200 | `NetworkingData` |
 | PUT | `/networking` | Update Wi-Fi configuration | 200/204 | N/A |
 | GET | `/auto-shut-off` | Get auto shut-off state | 200 | `AutoShutOffState` |
-| PUT | `/auto-shut-off` | Update auto shut-off (2026.1.0+, documented) | 204 | N/A |
-| PATCH | `/auto-shut-off` | Update auto shut-off (legacy, undocumented) | 204 | N/A |
+| PUT | `/auto-shut-off` | Update auto shut-off (2026.1.0+; `async_update_auto_shut_off`) | 200/204 | N/A |
+| PATCH | `/auto-shut-off` | **LEGACY / undocumented** — kept for old firmware only (`async_patch_auto_shut_off`, accepts only 204, retries only `ClientError`); prefer the PUT | 204 | N/A |
 | GET | `/auto-shut-off/report` | Get last report | 200/204 | `AutoShutOffReport` or None |
 | PUT | `/command` | Execute command (e.g. reboot) | 200/204 | N/A |
 | GET | `/webhook` | Get webhook URL | 200/204 | `str` or None |
@@ -629,6 +635,21 @@ Full coverage of the Sonic Local API **2026.1.0** spec.
 
 ---
 
+## Typing Standards
+
+The package ships a PEP 561 `py.typed` marker (declared via `package_data` in `setup.py`) so consumers such as
+Home Assistant (`strict-typing`) can rely on our annotations. **Never delete `py.typed`.**
+
+- `mypy` runs in `strict` mode (`[tool.mypy]` in `pyproject.toml`); run `mypy` from the repo root inside `.venv`. CI runs it in `.github/workflows/test.yml` (shared by PR checks and the release); `mypy` is pinned in `requirements.txt`.
+- Every function, method and attribute is fully annotated; use `dict[str, Any]` / `Mapping[str, Any]` (never bare `dict`).
+- Re-exports must be listed in `__all__` (`watergate_local_api/__init__.py`, `models/__init__.py`).
+- Models parse untrusted JSON through `field(data, KEY)` (`models/_util.py`): a typed `data.get`, same runtime behaviour. Constructor annotations describe the documented API shape even though a missing key yields `None` at runtime.
+- No blanket `# type: ignore`: each ignore carries a specific code and a reason. Current ones: `DeviceState.from_dict` (`arg-type`: `water_meter` is annotated `WaterMeter` but is `None` when the payload omits `waterMeter`; widening it would change a public signature).
+- Do not use `from __future__ import annotations`; quote self-referencing return types (`-> "Model"`) to stay compatible with Python < 3.14.
+- Obtain the HTTP session via `session = await self._ensure_session()`, never `self._session` directly (it is `Optional`).
+
+---
+
 ## Testing Guidelines
 
 ### Test File Organization
@@ -754,6 +775,7 @@ Every model must test:
 - **2026.1.0**: Added `async_update_auto_shut_off` — the documented PUT `/auto-shut-off` (media type `application/vnd.wtg.local.auto-shut-off-change.v1+json`, schema `AutoShutOffChange`) that supersedes the legacy PATCH. Client now fully covers firmware **2026.1.0**.
 - **Release tooling**: Version is derived from the **git tag** via `setuptools-scm` (no `version.txt`). To release, push a version tag (`YYYY.N.P`, optional `v` prefix) from `main`; `.github/workflows/release.yml` runs tests, builds in isolation, publishes to PyPI via **OIDC Trusted Publishing** (no API token; `pypi` environment approval) and creates the GitHub Release. See `RELEASING.md` and "Release process" below.
 - **Unreleased**: Non-idempotent mutations (`async_reboot`/`async_send_command`, `async_change_network`) are no longer blindly retried; on a lost response they raise the new `WatergateIndeterminateError` (subclass of `WatergateApiException`) instead of resending. Addresses the at-least-once ambiguity (issue #3).
+- **Unreleased (typing)**: Ship `py.typed`; whole package passes `mypy --strict`; added `__all__` re-exports, `models/_util.field`, mypy CI step. No runtime or public-signature change. Fixed doc drift: legacy PATCH `/auto-shut-off` clearly marked, retry delay is fixed (not exponential), spec-version caveat added.
 - *(Add entries for each significant update)*
 
 ---
@@ -791,6 +813,9 @@ pytest tests/local_api_test.py
 
 # Run with coverage
 pytest --cov=watergate_local_api
+
+# Type check (strict; config in pyproject.toml)
+pip install mypy && mypy
 
 # Build package (version is derived from the git tag by setuptools-scm)
 python -m build && twine check --strict dist/*

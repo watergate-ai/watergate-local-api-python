@@ -1,3 +1,5 @@
+from typing import Any, Mapping
+from ._util import field
 STATE_FIELD = "state"
 
 
@@ -9,6 +11,6 @@ class ValveState:
         self.state = state
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "ValveState":
         """Create a Valve State object from a dictionary."""
-        return cls(state=data.get(STATE_FIELD))
+        return cls(state=field(data, STATE_FIELD))

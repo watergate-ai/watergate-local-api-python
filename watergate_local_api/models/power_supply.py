@@ -1,3 +1,5 @@
+from typing import Any, Mapping
+from ._util import field
 from typing import Optional
 
 BATTERY_FIELD = "battery"
@@ -20,10 +22,10 @@ class PowerSupply:
         self.batteries_voltage = batteries_voltage
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "PowerSupply":
         """Create a Power Supply object from a dictionary."""
         return cls(
-            battery=data.get(BATTERY_FIELD),
-            external=data.get(EXTERNAL_FIELD),
-            batteries_voltage=data.get(BATTERIES_VOLTAGE_FIELD),
+            battery=field(data, BATTERY_FIELD),
+            external=field(data, EXTERNAL_FIELD),
+            batteries_voltage=field(data, BATTERIES_VOLTAGE_FIELD),
         )

@@ -14,6 +14,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/watergate-ai/watergate-local-api-python",
     packages=find_packages(),
+    package_data={"watergate_local_api": ["py.typed"]},
     install_requires=["aiohttp"],
     classifiers=[
         "Programming Language :: Python :: 3",

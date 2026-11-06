@@ -1,6 +1,7 @@
 import logging
 import json
-from typing import Optional
+from types import TracebackType
+from typing import Any, Optional
 
 import aiohttp
 import asyncio
@@ -66,34 +67,43 @@ class WatergateLocalApiClient:
         self._session = session
         self._session_owner = session is None
 
-    async def _ensure_session(self):
-        """Ensure the session is open, creating it if necessary (only if owned)."""
+    async def _ensure_session(self) -> aiohttp.ClientSession:
+        """Ensure the session is open, creating it if necessary (only if owned), and return it."""
         if self._session_owner and (self._session is None or self._session.closed):
             self._session = aiohttp.ClientSession(timeout=self._timeout, json_serialize=lambda data: json.dumps(data, separators=(',', ':')))
             _LOGGER.debug("Created a new aiohttp session.")
+        # An owned session was just (re)created above; otherwise one was injected in __init__.
+        assert self._session is not None
+        return self._session
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "WatergateLocalApiClient":
         """Enter the context and create the session if owned."""
         await self._ensure_session()
         return self
 
-    async def __aexit__(self, exc_type, exc_value, traceback):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         """Exit the context and close the session if owned."""
         await self.async_close()
 
-    async def _get(self, url: str, headers: dict, allow_none: bool = False) -> Optional[dict]:
+    async def _get(self, url: str, headers: dict[str, str], allow_none: bool = False) -> Optional[dict[str, Any]]:
         """Helper method to perform GET requests.
 
         When allow_none is True, a 204 No Content response returns None instead of being
         treated as a failure.
         """
-        await self._ensure_session()
+        session = await self._ensure_session()
 
         for attempt in RETRY_ATTEMPTS:  # Retry logic
             try:
-                response = await self._session.get(url, headers=headers)
+                response = await session.get(url, headers=headers)
                 if response.status == 200:
-                    return await response.json()
+                    result: dict[str, Any] = await response.json()
+                    return result
                 if allow_none and response.status == 204:
                     return None
                 _LOGGER.error("Failed to fetch data from %s: %s", url, response.status)
@@ -102,13 +112,13 @@ class WatergateLocalApiClient:
             await asyncio.sleep(1)
         raise WatergateApiException(f"Failed to fetch data from {url} after 3 attempts")
 
-    async def _put(self, url: str, headers: dict, data: dict, idempotent: bool = True) -> bool:
+    async def _put(self, url: str, headers: dict[str, str], data: dict[str, Any], idempotent: bool = True) -> bool:
         # Do not log the request body: it may carry secrets (e.g. the Wi-Fi password). Log metadata only.
         _LOGGER.debug("PUT %s with headers: %s", url, headers)
-        await self._ensure_session()
+        session = await self._ensure_session()
         for attempt in RETRY_ATTEMPTS:  # Retry logic
             try:
-                async with self._session.put(url, json=data, headers=headers) as response:
+                async with session.put(url, json=data, headers=headers) as response:
                     if response.status == 204 or response.status == 200:
                         return True
                     _LOGGER.error("Failed to put data to %s (headers: %s): %s", url, headers, response.status)
@@ -134,12 +144,12 @@ class WatergateLocalApiClient:
             await asyncio.sleep(1)
         raise WatergateApiException(f"Failed to put data to {url} after 3 attempts")
 
-    async def _delete(self, url: str, headers: dict) -> bool:
+    async def _delete(self, url: str, headers: dict[str, str]) -> bool:
         """Helper method to perform DELETE requests."""
-        await self._ensure_session()
+        session = await self._ensure_session()
         for attempt in RETRY_ATTEMPTS:  # Retry logic
             try:
-                async with self._session.delete(url, headers=headers) as response:
+                async with session.delete(url, headers=headers) as response:
                     if response.status == 204 or response.status == 200:
                         return True
                 _LOGGER.error("Failed to delete %s: %s", url, response.status)
@@ -148,7 +158,7 @@ class WatergateLocalApiClient:
             await asyncio.sleep(1)
         raise WatergateApiException(f"Failed to delete {url} after 3 attempts")
 
-    async def async_close(self):
+    async def async_close(self) -> None:
         """Explicitly close the session if owned."""
         if self._session_owner and self._session and not self._session.closed:
             await self._session.close()
@@ -200,7 +210,7 @@ class WatergateLocalApiClient:
         url = self._base_url + AUTO_SHUT_OFF_URL
         headers = {CONTENT_TYPE_HEADER: "application/vnd.wtg.local.auto-shut-off.v1+json"}
 
-        data = {}
+        data: dict[str, Any] = {}
 
         if enabled is not None:
             data["enabled"] = enabled
@@ -209,11 +219,11 @@ class WatergateLocalApiClient:
         if volume is not None:
             data["volumeThreshold"] = volume
         
-        await self._ensure_session()
+        session = await self._ensure_session()
 
         for attempt in RETRY_ATTEMPTS:  # Retry logic
             try:
-                async with self._session.patch(url, json=data, headers=headers) as response:
+                async with session.patch(url, json=data, headers=headers) as response:
                     if response.status == 204:
                         return True
                     _LOGGER.error("Failed to set auto shut off parameter: %s", response.status)
@@ -236,7 +246,7 @@ class WatergateLocalApiClient:
         url = self._base_url + AUTO_SHUT_OFF_URL
         headers = {CONTENT_TYPE_HEADER: "application/vnd.wtg.local.auto-shut-off-change.v1+json"}
 
-        data = {}
+        data: dict[str, Any] = {}
         if enabled is not None:
             data["enabled"] = enabled
         if duration is not None:
@@ -323,7 +333,7 @@ class WatergateLocalApiClient:
         url = self._base_url + BUZZER_URL
         headers = {CONTENT_TYPE_HEADER: "application/vnd.wtg.local.buzzer-control.v1+json"}
 
-        data = {"action": action}
+        data: dict[str, Any] = {"action": action}
         if name is not None:
             data["name"] = name
         if interval is not None:

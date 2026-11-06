@@ -1,3 +1,5 @@
+from typing import Any, Mapping
+from ._util import field
 from typing import List, Optional
 
 PLAYING_FIELD = "playing"
@@ -14,11 +16,11 @@ class BuzzerStatus:
         self.sound = sound
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "BuzzerStatus":
         """Create a Buzzer Status object from a dictionary."""
         return cls(
-            playing=data.get(PLAYING_FIELD),
-            sound=data.get(SOUND_FIELD),
+            playing=field(data, PLAYING_FIELD),
+            sound=field(data, SOUND_FIELD),
         )
 
 
@@ -30,6 +32,6 @@ class BuzzerSounds:
         self.sounds = sounds
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "BuzzerSounds":
         """Create a Buzzer Sounds object from a dictionary."""
-        return cls(sounds=data.get(SOUNDS_FIELD))
+        return cls(sounds=field(data, SOUNDS_FIELD))

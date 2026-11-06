@@ -1,3 +1,5 @@
+from typing import Any, Mapping
+from ._util import field
 MQTT_CONNECTED_FIELD = "mqttConnected"
 WIFI_CONNECTED_FIELD = "wifiConnected"
 IP_FIELD = "ip"
@@ -35,16 +37,16 @@ class NetworkingData:
         self.mqtt_uptime = mqtt_uptime
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "NetworkingData":
         """Create an Networking from a dictionary."""
         return cls(
-            mqtt_connected=data.get(MQTT_CONNECTED_FIELD),
-            wifi_connected=data.get(WIFI_CONNECTED_FIELD),
-            ip=data.get(IP_FIELD),
-            gateway=data.get(GATEWAY_FIELD),
-            subnet=data.get(SUBNET_FIELD),
-            ssid=data.get(SSID_FIELD),
-            rssi=data.get(RSSI_FIELD),
-            wifi_uptime=data.get(WIFI_UPTIME_FIELD),
-            mqtt_uptime=data.get(MQTT_UPTIME_FIELD),
+            mqtt_connected=field(data, MQTT_CONNECTED_FIELD),
+            wifi_connected=field(data, WIFI_CONNECTED_FIELD),
+            ip=field(data, IP_FIELD),
+            gateway=field(data, GATEWAY_FIELD),
+            subnet=field(data, SUBNET_FIELD),
+            ssid=field(data, SSID_FIELD),
+            rssi=field(data, RSSI_FIELD),
+            wifi_uptime=field(data, WIFI_UPTIME_FIELD),
+            mqtt_uptime=field(data, MQTT_UPTIME_FIELD),
         )

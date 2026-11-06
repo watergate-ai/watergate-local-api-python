@@ -1,3 +1,5 @@
+from typing import Any, Mapping
+from ._util import field
 TIMESTAMP_FIELD = "timestamp"
 TYPE_FIELD = "type"
 DURATION_FIELD = "duration"
@@ -20,11 +22,11 @@ class AutoShutOffReport:
         self.volume = volume
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "AutoShutOffReport":
         """Create an Auto Shut Off Report object from dictionary."""
         return cls(
-            timestamp=data.get(TIMESTAMP_FIELD),
-            type=data.get(TYPE_FIELD),
-            duration=data.get(DURATION_FIELD),
-            volume=data.get(VOLUME_FIELD)
+            timestamp=field(data, TIMESTAMP_FIELD),
+            type=field(data, TYPE_FIELD),
+            duration=field(data, DURATION_FIELD),
+            volume=field(data, VOLUME_FIELD)
         )

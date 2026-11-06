@@ -1,3 +1,5 @@
+from typing import Any, Mapping
+from ._util import field
 from typing import Optional, List, Dict, Union
 
 # Constants for field names
@@ -22,7 +24,7 @@ ERRORS_FIELD = "errors"
 class AutoShutOffReportData:
     """Represents data for the auto-shut-off report webhook event."""
     
-    def __init__(self, event_type: str, volume: int, duration: int, timestamp: int):
+    def __init__(self, event_type: str, volume: int, duration: int, timestamp: int) -> None:
         """
         Initialize the AutoShutOffReportData object.
         
@@ -37,13 +39,13 @@ class AutoShutOffReportData:
         self.timestamp = timestamp
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "AutoShutOffReportData":
         """Create an AutoShutOffReportData object from a dictionary."""
         return cls(
-            event_type=data.get(TYPE_FIELD),
-            volume=data.get(VOLUME_FIELD),
-            duration=data.get(DURATION_FIELD),
-            timestamp=data.get(TIMESTAMP_FIELD)
+            event_type=field(data, TYPE_FIELD),
+            volume=field(data, VOLUME_FIELD),
+            duration=field(data, DURATION_FIELD),
+            timestamp=field(data, TIMESTAMP_FIELD)
         )
 
 
@@ -57,7 +59,7 @@ class TelemetryEventData:
         temperature: Optional[float] = None,
         event: Optional[Dict[str, int]] = None,
         errors: Optional[List[str]] = None,
-    ):
+    ) -> None:
         """
         Initialize the TelemetryEventData object.
         
@@ -74,21 +76,21 @@ class TelemetryEventData:
         self.errors = errors
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "TelemetryEventData":
         """Create a TelemetryEventData object from a dictionary."""
         return cls(
-            flow=data.get(FLOW_FIELD),
-            pressure=data.get(PRESSURE_FIELD),
-            temperature=data.get(TEMPERATURE_FIELD),
-            event=data.get(EVENT_FIELD),
-            errors=data.get(ERRORS_FIELD)
+            flow=field(data, FLOW_FIELD),
+            pressure=field(data, PRESSURE_FIELD),
+            temperature=field(data, TEMPERATURE_FIELD),
+            event=field(data, EVENT_FIELD),
+            errors=field(data, ERRORS_FIELD)
         )
 
 
 class ValveEventData:
     """Represents data for the valve state change webhook event."""
     
-    def __init__(self, state: str):
+    def __init__(self, state: str) -> None:
         """
         Initialize the ValveEventData object.
         
@@ -97,17 +99,17 @@ class ValveEventData:
         self.state = state
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "ValveEventData":
         """Create a ValveEventData object from a dictionary."""
         return cls(
-            state=data.get(VALVE_STATE_FIELD)
+            state=field(data, VALVE_STATE_FIELD)
         )
 
 
 class PowerSupplyChangedEventData:
     """Represents data for the power supply change webhook event."""
     
-    def __init__(self, supply: str):
+    def __init__(self, supply: str) -> None:
         """
         Initialize the PowerSupplyChangedEventData object.
         
@@ -116,17 +118,17 @@ class PowerSupplyChangedEventData:
         self.supply = supply
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "PowerSupplyChangedEventData":
         """Create a PowerSupplyChangedEventData object from a dictionary."""
         return cls(
-            supply=data.get(SUPPLY_FIELD)
+            supply=field(data, SUPPLY_FIELD)
         )
 
 
 class WifiChangedEventData:
     """Represents data for the WiFi configuration change webhook event."""
     
-    def __init__(self, ip: str, gateway: str, subnet: str, ssid: str, rssi: int):
+    def __init__(self, ip: str, gateway: str, subnet: str, ssid: str, rssi: int) -> None:
         """
         Initialize the WifiChangedEventData object.
         
@@ -143,21 +145,21 @@ class WifiChangedEventData:
         self.rssi = rssi
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "WifiChangedEventData":
         """Create a WifiChangedEventData object from a dictionary."""
         return cls(
-            ip=data.get(IP_FIELD),
-            gateway=data.get(GATEWAY_FIELD),
-            subnet=data.get(SUBNET_FIELD),
-            ssid=data.get(SSID_FIELD),
-            rssi=data.get(RSSI_FIELD)
+            ip=field(data, IP_FIELD),
+            gateway=field(data, GATEWAY_FIELD),
+            subnet=field(data, SUBNET_FIELD),
+            ssid=field(data, SSID_FIELD),
+            rssi=field(data, RSSI_FIELD)
         )
 
 
 class OnlineEvent:
     """Represents an online status webhook event with no specific data."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the OnlineEvent object.
         
@@ -166,7 +168,7 @@ class OnlineEvent:
         self.type = "online"
     
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "OnlineEvent":
         """Create an OnlineEvent object from a dictionary."""
         return cls()
 
@@ -174,7 +176,7 @@ class OnlineEvent:
 class WebhookEvent:
     """Base class for all webhook events."""
     
-    def __init__(self, event_type: str, data: dict):
+    def __init__(self, event_type: str, data: dict[str, Any]) -> None:
         """
         Initialize the WebhookEvent object.
         
@@ -185,15 +187,15 @@ class WebhookEvent:
         self.data = data
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "WebhookEvent":
         """Create a base WebhookEvent object from a dictionary."""
         return cls(
-            event_type=data.get("type"),
+            event_type=field(data, "type"),
             data=data.get("data", {})
         )
     
     @classmethod
-    def parse_webhook_event(cls, data: dict) -> Union[
+    def parse_webhook_event(cls, data: Mapping[str, Any]) -> Union[
         AutoShutOffReportData, TelemetryEventData, ValveEventData, 
         PowerSupplyChangedEventData, WifiChangedEventData, OnlineEvent
     ]:

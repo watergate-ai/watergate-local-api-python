@@ -1,3 +1,5 @@
+from typing import Any, Mapping
+from ._util import field
 from typing import Optional
 from .water_meter import WaterMeter
 
@@ -15,7 +17,7 @@ NEGATIVE_FIELD = "negative"
 BUZZER_PLAYING_FIELD = "buzzerPlaying"
 
 
-def _create_water_meter_from_data(data: Optional[dict]) -> Optional[WaterMeter]:
+def _create_water_meter_from_data(data: Optional[Mapping[str, Any]]) -> Optional[WaterMeter]:
     """Helper function to create WaterMeter from dict data if present.
     
     Args:
@@ -56,18 +58,19 @@ class DeviceState:
         self.serial_number = serial_number
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "DeviceState":
         """Create an Device State object from a dictionary."""
         return cls(
-            valve_state=data.get(VALVE_STATE_FIELD),
-            water_flow_indicator=data.get(WATER_FLOW_INDICATOR_FIELD),
-            mqtt_status=data.get(MQTT_STATUS_FIELD),
-            wifi_status=data.get(WIFI_STATUS_FIELD),
-            power_supply=data.get(POWER_SUPPLY_FIELD),
-            firmware_version=data.get(FIRMWARE_VERSION_FIELD),
-            serial_number=data.get(SERIAL_NUMBER_FIELD),
-            uptime=data.get(UPTIME_FIELD),
-            water_meter=_create_water_meter_from_data(data.get(WATER_METER_FIELD))
+            valve_state=field(data, VALVE_STATE_FIELD),
+            water_flow_indicator=field(data, WATER_FLOW_INDICATOR_FIELD),
+            mqtt_status=field(data, MQTT_STATUS_FIELD),
+            wifi_status=field(data, WIFI_STATUS_FIELD),
+            power_supply=field(data, POWER_SUPPLY_FIELD),
+            firmware_version=field(data, FIRMWARE_VERSION_FIELD),
+            serial_number=field(data, SERIAL_NUMBER_FIELD),
+            uptime=field(data, UPTIME_FIELD),
+            # Runtime value is None when the payload has no waterMeter; the public annotation is kept.
+            water_meter=_create_water_meter_from_data(field(data, WATER_METER_FIELD)),  # type: ignore[arg-type]
         )
 
 
@@ -101,18 +104,18 @@ class DeviceStateV2:
         self.serial_number = serial_number
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "DeviceStateV2":
         """Create a Device State V2 object from a dictionary."""
-        water_meter_data = data.get(WATER_METER_FIELD) or {}
+        water_meter_data = field(data, WATER_METER_FIELD) or {}
         return cls(
-            valve_state=data.get(VALVE_STATE_FIELD),
-            water_flow_indicator=data.get(WATER_FLOW_INDICATOR_FIELD),
-            mqtt_status=data.get(MQTT_STATUS_FIELD),
-            wifi_status=data.get(WIFI_STATUS_FIELD),
-            power_supply=data.get(POWER_SUPPLY_FIELD),
-            firmware_version=data.get(FIRMWARE_VERSION_FIELD),
-            serial_number=data.get(SERIAL_NUMBER_FIELD),
-            uptime=data.get(UPTIME_FIELD),
+            valve_state=field(data, VALVE_STATE_FIELD),
+            water_flow_indicator=field(data, WATER_FLOW_INDICATOR_FIELD),
+            mqtt_status=field(data, MQTT_STATUS_FIELD),
+            wifi_status=field(data, WIFI_STATUS_FIELD),
+            power_supply=field(data, POWER_SUPPLY_FIELD),
+            firmware_version=field(data, FIRMWARE_VERSION_FIELD),
+            serial_number=field(data, SERIAL_NUMBER_FIELD),
+            uptime=field(data, UPTIME_FIELD),
             water_meter_positive=_create_water_meter_from_data(water_meter_data.get(POSITIVE_FIELD)),
             water_meter_negative=_create_water_meter_from_data(water_meter_data.get(NEGATIVE_FIELD))
         )
@@ -151,19 +154,19 @@ class DeviceStateV3(DeviceStateV2):
         self.buzzer_playing = buzzer_playing
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Mapping[str, Any]) -> "DeviceStateV3":
         """Create a Device State V3 object from a dictionary."""
-        water_meter_data = data.get(WATER_METER_FIELD) or {}
+        water_meter_data = field(data, WATER_METER_FIELD) or {}
         return cls(
-            valve_state=data.get(VALVE_STATE_FIELD),
-            water_flow_indicator=data.get(WATER_FLOW_INDICATOR_FIELD),
-            mqtt_status=data.get(MQTT_STATUS_FIELD),
-            wifi_status=data.get(WIFI_STATUS_FIELD),
-            power_supply=data.get(POWER_SUPPLY_FIELD),
-            firmware_version=data.get(FIRMWARE_VERSION_FIELD),
-            serial_number=data.get(SERIAL_NUMBER_FIELD),
-            uptime=data.get(UPTIME_FIELD),
+            valve_state=field(data, VALVE_STATE_FIELD),
+            water_flow_indicator=field(data, WATER_FLOW_INDICATOR_FIELD),
+            mqtt_status=field(data, MQTT_STATUS_FIELD),
+            wifi_status=field(data, WIFI_STATUS_FIELD),
+            power_supply=field(data, POWER_SUPPLY_FIELD),
+            firmware_version=field(data, FIRMWARE_VERSION_FIELD),
+            serial_number=field(data, SERIAL_NUMBER_FIELD),
+            uptime=field(data, UPTIME_FIELD),
             water_meter_positive=_create_water_meter_from_data(water_meter_data.get(POSITIVE_FIELD)),
             water_meter_negative=_create_water_meter_from_data(water_meter_data.get(NEGATIVE_FIELD)),
-            buzzer_playing=data.get(BUZZER_PLAYING_FIELD),
+            buzzer_playing=field(data, BUZZER_PLAYING_FIELD),
         )
