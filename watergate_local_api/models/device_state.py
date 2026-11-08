@@ -42,7 +42,7 @@ class DeviceState:
         power_supply: str,
         firmware_version: str,
         uptime: int,
-        water_meter: WaterMeter,
+        water_meter: Optional[WaterMeter],
         serial_number: str,
     ) -> None:
         """Create an Device State object."""
@@ -69,8 +69,7 @@ class DeviceState:
             firmware_version=field(data, FIRMWARE_VERSION_FIELD),
             serial_number=field(data, SERIAL_NUMBER_FIELD),
             uptime=field(data, UPTIME_FIELD),
-            # Runtime value is None when the payload has no waterMeter; the public annotation is kept.
-            water_meter=_create_water_meter_from_data(field(data, WATER_METER_FIELD)),  # type: ignore[arg-type]
+            water_meter=_create_water_meter_from_data(field(data, WATER_METER_FIELD)),
         )
 
 

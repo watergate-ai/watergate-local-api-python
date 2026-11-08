@@ -1,4 +1,4 @@
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional
 from ._util import field
 from .water_event import Event
 
@@ -13,9 +13,9 @@ class TelemetryData:
 
     def __init__(
         self,
-        flow: float,
-        pressure: float,
-        water_temperature: float,
+        flow: Optional[float],
+        pressure: Optional[float],
+        water_temperature: Optional[float],
         ongoing_event: Event | None,
         errors: list[str],
     ) -> None:
