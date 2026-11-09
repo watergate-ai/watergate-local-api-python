@@ -542,16 +542,16 @@ match the public methods; every other row matches the 2025.2.0 spec.
 - `power_supply: str` - Power source: "battery", "external", "external+battery"
 - `firmware_version: str` - Firmware version (e.g., "2024.1.0")
 - `uptime: int` - Device uptime in seconds
-- `water_meter: WaterMeter` - Total water usage stats
+- `water_meter: WaterMeter | None` - Total water usage stats (`None` when the payload omits `waterMeter`)
 - `serial_number: str` - Device serial number
 
 ### TelemetryData
 **Purpose**: Real-time sensor readings
 
 **Fields**:
-- `flow: float` - Flow rate in ml/min
-- `pressure: float` - Water pressure in mbar
-- `water_temperature: float` - Temperature in °C
+- `flow: float | None` - Flow rate in ml/min (`None` when absent or reported in `errors`)
+- `pressure: float | None` - Water pressure in mbar (`None` when absent or reported in `errors`)
+- `water_temperature: float | None` - Temperature in °C (`None` when absent or reported in `errors`)
 - `ongoing_event: Event | None` - Current water usage event
 - `errors: list[str]` - List of sensor errors ("flow", "pressure", "temperature")
 
@@ -565,9 +565,9 @@ match the public methods; every other row matches the 2025.2.0 spec.
 - `gateway: str` - Gateway IP
 - `subnet: str` - Subnet mask
 - `ssid: str` - Connected WiFi SSID
-- `rssi: str` - WiFi signal strength in dBm
-- `wifi_uptime: str` - WiFi connection duration
-- `mqtt_uptime: str` - MQTT connection duration
+- `rssi: int` - WiFi signal strength in dBm
+- `wifi_uptime: int` - WiFi connection duration in ms
+- `mqtt_uptime: int` - MQTT connection duration in ms
 
 ### AutoShutOffState
 **Purpose**: Auto shut-off configuration
@@ -643,8 +643,8 @@ Home Assistant (`strict-typing`) can rely on our annotations. **Never delete `py
 - `mypy` runs in `strict` mode (`[tool.mypy]` in `pyproject.toml`); run `mypy` from the repo root inside `.venv`. CI runs it in `.github/workflows/test.yml` (shared by PR checks and the release); `mypy` is pinned in `requirements.txt`.
 - Every function, method and attribute is fully annotated; use `dict[str, Any]` / `Mapping[str, Any]` (never bare `dict`).
 - Re-exports must be listed in `__all__` (`watergate_local_api/__init__.py`, `models/__init__.py`).
-- Models parse untrusted JSON through `field(data, KEY)` (`models/_util.py`): a typed `data.get`, same runtime behaviour. Constructor annotations describe the documented API shape even though a missing key yields `None` at runtime.
-- No blanket `# type: ignore`: each ignore carries a specific code and a reason. Current ones: `DeviceState.from_dict` (`arg-type`: `water_meter` is annotated `WaterMeter` but is `None` when the payload omits `waterMeter`; widening it would change a public signature).
+- Models parse untrusted JSON through `field(data, KEY)` (`models/_util.py`): a typed `data.get`, same runtime behaviour. Constructor annotations describe the documented API shape even though a missing key yields `None` at runtime; annotate a value `Optional[...]` when consumers legitimately see `None` (e.g. a sensor reading the device reports as errored), and check units/types against the Sonic Local API OpenAPI specification (`firmware.openapi.yml`, maintained by the firmware team and not part of this repository), not docstrings.
+- No blanket `# type: ignore`: each ignore carries a specific code and a reason. There are currently none.
 - Do not use `from __future__ import annotations`; quote self-referencing return types (`-> "Model"`) to stay compatible with Python < 3.14.
 - Obtain the HTTP session via `session = await self._ensure_session()`, never `self._session` directly (it is `Optional`).
 

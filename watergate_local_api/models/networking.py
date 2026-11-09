@@ -21,9 +21,9 @@ class NetworkingData:
         gateway: str,
         subnet: str,
         ssid: str,
-        rssi: str,
-        wifi_uptime: str,
-        mqtt_uptime: str,
+        rssi: int,
+        wifi_uptime: int,
+        mqtt_uptime: int,
     ) -> None:
         """Create an Networking object."""
         self.mqtt_connected = mqtt_connected
