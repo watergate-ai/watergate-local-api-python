@@ -8,3 +8,13 @@ updates:
     groups:
       github-actions:
         patterns: ["*"]
+
+  # Python dependencies: requirements.txt (pinned test/typing tools) and pyproject.toml.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
